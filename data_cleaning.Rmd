@@ -1,0 +1,16 @@
+---
+title: "Intermediate Progress"
+author: "Khanh Do, Joyce Gill, Billings-Chiu, Matthew"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load Data
+
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/khanhdo05/stats-final-230/refs/heads/main/Most-Recent-Cohorts-Institution.csv")
+```
