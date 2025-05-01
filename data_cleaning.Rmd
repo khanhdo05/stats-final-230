@@ -14,6 +14,7 @@ library(dplyr)
 library(ggplot2)
 library(shiny)
 library(tidyverse)
+library(tidyr)
 ```
 
 # Load Data
@@ -23,10 +24,7 @@ data <- read.csv("https://raw.githubusercontent.com/khanhdo05/stats-final-230/re
 
 ## Data Cleaning
 ```{r}
-data <- data %>%
-  dplyr::select(UNITID, INSTNM, CITY, STABBR, ACCREDAGENCY, HBCU, HSI, MENONLY, WOMENONLY, RELAFFIL, ADM_RATE, ADM_RATE_ALL, SAT_AVG, SAT_AVG_ALL, UGDS, UGDS_WHITE, UGDS_BLACK, UGDS_HISP, UGDS_ASIAN, UGDS_AIAN, UGDS_NHPI, UGDS_2MOR, UGDS_NRA, UGDS_UNKN, C150_4)
- 
-head(data)
+
 ```
 
 ```{r}
