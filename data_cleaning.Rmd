@@ -91,7 +91,7 @@ shinyApp(ui, server)
 
 ## Feature 2
 
-The app will feature sliders for SAT average and admission rate (in ranges), along with filters for state and institution `CONTROL` type (Public = 1, Private = 2 or 3),  Locale (by rural & town, suburb & city) . Based on the user's selections, the app will return a list of colleges that meet the criteria. These results will be displayed in a clickable word cloud; clicking on a school’s name will redirect the user to the college’s official website. User will also have the option to tick whether they want to include criteria SAT, Admission ratewith a checkbox next to the sliders. For Locale and IS_PUBLIC, they can also not tick any box. The sliders for SAT and Admission rate would have a start and end pointer to show the range in which they want to filter for.
+The app will feature sliders for SAT average and admission rate (in ranges), along with filters for state and institution `CONTROL` type (Public = 1, Private = 2 or 3),  Locale (by rural & town, suburb & city) . Based on the user's selections, the app will return a list of colleges that meet the criteria in the form of a scatter plot with x-axis is the SAT average and y-axis is the Admission rate, where on hover the point, it shows the information, on click, user can click on the school website link. User will also have the option to tick whether they want to include criteria SAT, Admission rate. For Locale and IS_PUBLIC, they can also not tick any box or all boxes. The sliders for SAT and Admission rate would have a start and end pointer to show the range in which they want to filter for.
 
 ```{r}
 # Data cleaning
