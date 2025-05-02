@@ -16,6 +16,7 @@ library(shiny)
 library(tidyverse)
 library(tidyr)
 library(plotly)
+library(DT)
 ```
 
 # Introduction
@@ -36,6 +37,14 @@ data <- read.csv("https://raw.githubusercontent.com/khanhdo05/stats-final-230/re
 Users will be able to select an institution and view its racial composition through a Plotly pie chart, using variables like `UGDS_WHITE`, `UGDS_BLACK`, `UGDS_HISP`, `UGDS_ASIAN`, and more. The chart will display raw percentages when hovering over each slice, giving a quick and clear breakdown of the student body.
 
 ```{r}
+# Data cleaning
+# feature3data <- data %>%
+
+# Write to csv file
+# write_csv(feature1data, "cleaned_feature1data.csv")
+
+# Sketch visualization
+
 ## NOT REACTIVE
 ui <- fluidPage(
   titlePanel("Undergraduate Racial Composition by Institution"),
@@ -82,10 +91,68 @@ shinyApp(ui, server)
 
 ## Feature 2
 
-The app will feature sliders for SAT average and admission rate, along with filters for state and institution `CONTROL` type (Public = 1, Private = 2 or 3). Based on the user's selections, the app will return a list of colleges that meet the criteria. These results will be displayed in a clickable word cloud; clicking on a school’s name will redirect the user to the college’s official website
+The app will feature sliders for SAT average and admission rate (in ranges), along with filters for state and institution `CONTROL` type (Public = 1, Private = 2 or 3),  Locale (by rural & town, suburb & city) . Based on the user's selections, the app will return a list of colleges that meet the criteria. These results will be displayed in a clickable word cloud; clicking on a school’s name will redirect the user to the college’s official website. User will also have the option to tick whether they want to include criteria SAT, Admission ratewith a checkbox next to the sliders. For Locale and IS_PUBLIC, they can also not tick any box. The sliders for SAT and Admission rate would have a start and end pointer to show the range in which they want to filter for.
 
 ```{r}
+# Data cleaning
+feature2data <- data %>%
+  # Select only relevant variables
+  dplyr::select(INSTNM, INSTURL, CONTROL, SAT_AVG, ADM_RATE, LOCALE) %>%
+  # Drop rows that have NA values for all SAT_AVG, ADM_RATE, and LOCALE
+  filter(!(is.na(SAT_AVG) & is.na(ADM_RATE) & is.na(LOCALE))) %>%
+  # Binary variable for colleges that are public and is in city or suburb
+  mutate(
+    IS_PUBLIC = case_when(
+      CONTROL == 1 ~ 1,
+      CONTROL %in% c(2, 3) ~ 0,
+      TRUE ~ NA_real_
+    ),
+    IS_CITY = case_when(
+      LOCALE >= 11 & LOCALE <= 23 ~ 1,
+      LOCALE >= 31 & LOCALE <= 43 ~ 0,
+      TRUE ~ NA_real_
+    )) %>%
+  # Remove column that is no longer needed
+  select(!c("CONTROL", "LOCALE"))
 
+# Writing to csv file
+write_csv(feature2data, "cleaned_feature2data.csv")
+
+df <- feature2data %>%
+  mutate(
+    SAT_AVG = as.numeric(SAT_AVG),
+    ADM_RATE = as.numeric(ADM_RATE)
+  ) %>%
+  filter(!is.na(SAT_AVG), !is.na(ADM_RATE))
+
+# Sketch visualization
+plot_ly(
+  data = df,
+  x = ~SAT_AVG,
+  y = ~ADM_RATE,
+  type = 'scatter',
+  mode = 'markers',
+  text = ~paste(
+    "School:", INSTNM,
+    "<br>SAT:", SAT_AVG,
+    "<br>Adm Rate:", round(ADM_RATE, 3)
+  ),
+  hoverinfo = 'text',
+  marker = list(color = 'rgba(0, 102, 204, 0.6)', size = 10)
+) %>%
+layout(
+  title = "Colleges: SAT vs Admission Rate",
+  xaxis = list(title = "Average SAT Score"),
+  yaxis = list(title = "Admission Rate"),
+  annotations = list(
+    x = 0.5, y = 1,  # Positioning the subtitle
+    text = "Hover over and click on a point to see details about the school.",
+    showarrow = FALSE,
+    font = list(size = 14),
+    align = 'center',
+    xref = 'paper', yref = 'paper'
+  )
+)
 ```
 
 ## Feature 3
@@ -93,5 +160,11 @@ The app will feature sliders for SAT average and admission rate, along with filt
 The app will include a plot that allows users to filter colleges based on median student debt, median earnings, undergraduate enrollment, admission rate, and ACT average (calculated from subject scores using data manipulation). After selecting a college of interest, the app will use clustering techniques to identify and visualize similar institutions, helping users explore comparable schools based on these key financial and academic attributes.
 
 ```{r}
+# Data cleaning
+# feature3data <- data %>%
 
+# Write to csv file
+# write_csv(feature3data, "cleaned_feature3data.csv")
+
+# Sketch visualization
 ```
