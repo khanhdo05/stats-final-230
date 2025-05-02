@@ -9,12 +9,13 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r echo = F, include = F}
 library(dplyr)
 library(ggplot2)
 library(shiny)
 library(tidyverse)
 library(tidyr)
+library(plotly)
 ```
 
 # Introduction
@@ -30,12 +31,53 @@ This project explores higher education data from U.S. colleges to uncover trends
 data <- read.csv("https://raw.githubusercontent.com/khanhdo05/stats-final-230/refs/heads/main/Most-Recent-Cohorts-Institution.csv")
 ```
 
-## Feature 1
+## Feature 1 Joyce
 
 Users will be able to select an institution and view its racial composition through a Plotly pie chart, using variables like `UGDS_WHITE`, `UGDS_BLACK`, `UGDS_HISP`, `UGDS_ASIAN`, and more. The chart will display raw percentages when hovering over each slice, giving a quick and clear breakdown of the student body.
 
 ```{r}
+## NOT REACTIVE
+ui <- fluidPage(
+  titlePanel("Undergraduate Racial Composition by Institution"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("selected_inst", "Select Institution:",
+                  choices = sort(unique(data$INSTNM)),
+                  selected = "Grinnell College")
+    ),
+    mainPanel(
+      plotlyOutput("racePie")
+    )
+  )
+)
 
+# Server
+server <- function(input, output) {
+  output$racePie <- renderPlotly({
+    selected_data <- data %>%
+      filter(INSTNM == input$selected_inst)
+    race_labels <- c("White", "Black", "Hispanic", "Asian", "American Indian/Alaska Native", "Native Hawaiian/Pacific Islander",
+                     "Two or More", "Non-Resident Alien", "Unknown")
+    
+    race_columns <- c("UGDS_WHITE", "UGDS_BLACK", "UGDS_HISP", "UGDS_ASIAN",
+                      "UGDS_AIAN", "UGDS_NHPI", "UGDS_2MOR", "UGDS_NRA", "UGDS_UNKN")
+    
+    race_values <- as.numeric(selected_data[1, race_columns])
+    
+    valid_indices <- !is.na(race_values) & race_values > 0
+    race_labels <- race_labels[valid_indices]
+    race_values <- race_values[valid_indices]
+
+    plot_ly(
+      labels = race_labels,
+      values = race_values,
+      type = "pie"
+    ) %>%
+      layout(title = paste("Racial Composition of", input$selected_inst))
+  })
+}
+
+shinyApp(ui, server)
 ```
 
 ## Feature 2
@@ -53,4 +95,3 @@ The app will include a plot that allows users to filter colleges based on median
 ```{r}
 
 ```
-
