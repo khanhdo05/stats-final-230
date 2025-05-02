@@ -36,6 +36,7 @@ data <- read.csv("https://raw.githubusercontent.com/khanhdo05/stats-final-230/re
 Users will be able to select an institution and view its racial composition through a Plotly pie chart, using variables like `UGDS_WHITE`, `UGDS_BLACK`, `UGDS_HISP`, `UGDS_ASIAN`, and more. The chart will display raw percentages when hovering over each slice, giving a quick and clear breakdown of the student body.
 
 ```{r}
+## NOT REACTIVE
 ui <- fluidPage(
   titlePanel("Undergraduate Racial Composition by Institution"),
   sidebarLayout(
