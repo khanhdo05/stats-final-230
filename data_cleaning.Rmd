@@ -1,6 +1,6 @@
 ---
 title: "Intermediate Progress"
-author: "Khanh Do, Joyce Gill, Billings-Chiu, Matthew"
+author: "Khanh Do, Joyce Gill, Matthew Billings-Chiu"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
@@ -17,6 +17,11 @@ library(tidyverse)
 library(tidyr)
 library(plotly)
 library(DT)
+library(cluster)
+library(psych)
+library(factoextra)
+library(corrplot)
+library(tibble)
 ```
 
 # Introduction
@@ -140,10 +145,17 @@ The app will include a plot that allows users to filter colleges based on median
 
 ```{r}
 # Data cleaning
-# feature3data <- data %>%
+feature3data <- data %>%
+  mutate(ACT_MEDIAN = ACTWRMID + ACTMTMID) %>% 
+  select(UGDS, ADM_RATE, ACT_MEDIAN, GRAD_DEBT_MDN) %>% #can't find median earnings, add back INSTNM after scaling.
+  mutate(GRAD_DEBT_MDN = as.numeric(GRAD_DEBT_MDN)) %>% # for some reason this was a character
+  drop_na()
 
 # Write to csv file
-# write_csv(feature3data, "cleaned_feature3data.csv")
+write_csv(feature3data, "cleaned_feature3data.csv")
 
 # Sketch visualization
+feature3data <- scale(feature3data)
+k2 <- kmeans(feature3data, centers = 2, nstart = 25) #number of centers can be changed for "how similar" user wants
+fviz_cluster(k2, data = feature3data)
 ```
