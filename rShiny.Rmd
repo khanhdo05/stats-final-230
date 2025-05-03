@@ -28,10 +28,7 @@ This project explores higher education data from U.S. colleges to uncover trends
 # Data Cleaning
 
 ```{r}
-# Load data
-data <- read.csv("https://raw.githubusercontent.com/khanhdo05/stats-final-230/refs/heads/main/Most-Recent-Cohorts-Institution.csv")
-
-# feature1data <- read.csv("cleaned_feature1data.csv")
+feature1data <- read.csv("cleaned_feature1data.csv")
 feature2data <- read.csv("cleaned_feature2data.csv")
 # feature3data <- read.csv("cleaned_feature3data.csv")
 ```
@@ -53,7 +50,7 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       selectInput("selected_inst", "Select Institution:",
-                  choices = sort(unique(data$INSTNM)),
+                  choices = sort(unique(feature1data$INSTNM)),
                   selected = "Grinnell College")
     ),
     mainPanel(
@@ -65,7 +62,7 @@ ui <- fluidPage(
 # Server
 server <- function(input, output) {
   output$racePie <- renderPlotly({
-    selected_data <- data %>%
+    selected_data <- feature1data %>%
       filter(INSTNM == input$selected_inst)
     race_labels <- c("White", "Black", "Hispanic", "Asian", "American Indian/Alaska Native", "Native Hawaiian/Pacific Islander",
                      "Two or More", "Non-Resident Alien", "Unknown")

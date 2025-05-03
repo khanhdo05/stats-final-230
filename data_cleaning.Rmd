@@ -3,6 +3,7 @@ title: "Intermediate Progress"
 author: "Khanh Do, Joyce Gill, Matthew Billings-Chiu"
 date: "`r Sys.Date()`"
 output: pdf_document
+always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
@@ -73,6 +74,9 @@ plot_ly(
   layout(title = paste("Racial Composition of", selected_inst))
 ```
 
+![Interactive pie chart](./feat1.png)
+
+
 ## Feature 2
 
 The app will feature sliders for SAT average and admission rate (in ranges), along with filters for state and institution `CONTROL` type (Public = 1, Private = 2 or 3),  Locale (by rural & town, suburb & city) . Based on the user's selections, the app will return a list of colleges that meet the criteria in the form of a scatter plot with x-axis is the SAT average and y-axis is the Admission rate, where on hover the point, it shows the information, on click, user can click on the school website link. User will also have the option to tick whether they want to include criteria SAT, Admission rate. For Locale and IS_PUBLIC, they can also not tick any box or all boxes. The sliders for SAT and Admission rate would have a start and end pointer to show the range in which they want to filter for.
@@ -139,6 +143,8 @@ layout(
 )
 ```
 
+![Interactive scatter plot](./feat2.png)
+
 ## Feature 3
 
 The app will include a plot that allows users to filter colleges based on median student debt, median earnings, undergraduate enrollment, admission rate, and ACT average (calculated from subject scores using data manipulation). After selecting a college of interest, the app will use clustering techniques to identify and visualize similar institutions, helping users explore comparable schools based on these key financial and academic attributes.
@@ -146,16 +152,64 @@ The app will include a plot that allows users to filter colleges based on median
 ```{r}
 # Data cleaning
 feature3data <- data %>%
-  mutate(ACT_MEDIAN = ACTWRMID + ACTMTMID) %>% 
-  select(UGDS, ADM_RATE, ACT_MEDIAN, GRAD_DEBT_MDN) %>% #can't find median earnings, add back INSTNM after scaling.
-  mutate(GRAD_DEBT_MDN = as.numeric(GRAD_DEBT_MDN)) %>% # for some reason this was a character
+  mutate(ACT_MEDIAN = ACTWRMID + ACTMTMID) %>%
+  select(INSTNM, UGDS, ADM_RATE, ACT_MEDIAN, GRAD_DEBT_MDN) %>%
+  mutate(GRAD_DEBT_MDN = na_if(GRAD_DEBT_MDN, "PrivacySuppressed")) %>%
+  mutate(GRAD_DEBT_MDN = as.numeric(GRAD_DEBT_MDN)) %>%
   drop_na()
 
 # Write to csv file
 write_csv(feature3data, "cleaned_feature3data.csv")
 
-# Sketch visualization
-feature3data <- scale(feature3data)
-k2 <- kmeans(feature3data, centers = 2, nstart = 25) #number of centers can be changed for "how similar" user wants
-fviz_cluster(k2, data = feature3data)
+# Scale features (exclude school name)
+features_scaled <- feature3data %>%
+  select(-INSTNM) %>%
+  scale()
+
+# K-means clustering
+k2 <- kmeans(features_scaled, centers = 2, nstart = 25)
+
+# Extract numeric features and scale
+school_names <- feature3data$INSTNM
+features_only <- feature3data %>% select(-INSTNM)
+scaled_features <- scale(features_only)
+
+# Sketch visualization no.1
+# Obviously, there is still modifications to come to make this easier to read
+fviz_cluster(k2, data = scaled_features, 
+             labelsize = 7,
+             main = "K-means Clustering of Colleges",
+             repel = TRUE) +
+  geom_text(aes(label = school_names), size = 2, vjust = 1.5, hjust = 1.2)
+
+# PCA for 2D visualization
+pca <- prcomp(features_scaled)
+pca_data <- as.data.frame(pca$x[, 1:2]) # PC1 and PC2
+pca_data$School <- feature3data$INSTNM
+pca_data$Cluster <- as.factor(k2$cluster)
+
+# Sketch visualization no.2
+plot_ly(pca_data, 
+        x = ~PC1, 
+        y = ~PC2, 
+        type = 'scatter', 
+        mode = 'markers',
+        color = ~Cluster,
+        text = ~paste("School:", School,
+                      "<br>Cluster:", Cluster),
+        hoverinfo = 'text') %>%
+  layout(
+    title = "Interactive K-means Cluster Plot (PCA)",
+    xaxis = list(title = "Principal Component 1"),
+    yaxis = list(title = "Principal Component 2"),
+    annotations = list(
+      x = 0.5, y = 1,  # Positioning the subtitle
+      text = "Hover over on a point to see which school it is.",
+      showarrow = FALSE,
+      font = list(size = 14),
+      align = 'center',
+      xref = 'paper', yref = 'paper'
+  ))
 ```
+
+![Interactive cluster scatter](./feat3.png)
