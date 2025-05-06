@@ -253,7 +253,8 @@ ui <- fluidPage(
                   choices = sort(unique(feature3data$INSTNM))),
   
       #numericInput(inputID = 'n', label = 'Number of Clusters (Specificity of Similarity)', value = 100),
-  
+#says this is an unused argument, but would like this to be defined for the number of centers
+
       checkboxGroupInput("enrollment_filter", "Similar Enrollment Size",
                          choices = list("Include" = 1)),
       checkboxGroupInput("ACT_filter", "Similar Test Score",
@@ -312,6 +313,8 @@ features_scaled <- feature3data %>%
 
 # K-means clustering
 k2 <- kmeans(features_scaled, centers = 2, nstart = 25)
+#swap centers with n (defined above)
+
 
 # Extract numeric features and scale
 school_names <- feature3data$INSTNM
