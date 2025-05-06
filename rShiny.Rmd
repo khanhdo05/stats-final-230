@@ -238,23 +238,21 @@ shinyApp(ui, server)
 ```
 
 
-NOT WORKING
+FEATURE 3:
 
 ```{r}
-#UI
-
+## Set up the UI object
 ui <- fluidPage(
-  
   titlePanel("Find Similar Colleges"),
   
   sidebarLayout(
     sidebarPanel(
       selectInput("selected_inst", "Select Institution",
                   choices = sort(unique(feature3data$INSTNM))),
-  
-      #numericInput(inputID = 'n', label = 'Number of Clusters (Specificity of Similarity)', value = 100),
-#says this is an unused argument, but would like this to be defined for the number of centers
-
+      
+      checkboxGroupInput("show_only_cluster", "Show Only Cluster of Selected Institution",
+                         choices = list("Filter" = 1)),
+      
       checkboxGroupInput("enrollment_filter", "Similar Enrollment Size",
                          choices = list("Include" = 1)),
       checkboxGroupInput("ACT_filter", "Similar Test Score",
@@ -262,7 +260,11 @@ ui <- fluidPage(
       checkboxGroupInput("admission_filter", "Similar Admission Rate",
                          choices = list("Include" = 1)),
       checkboxGroupInput("debt_filter", "Similar Graduate Debt",
-                         choices = list("Include" = 1))
+                         choices = list("Include" = 1)),
+      
+      numericInput("n_clusters", "Number of Clusters (Specificity of Similarity)", value = 5, min = 2, max = 20),
+      
+      actionButton("show_result", "Show Similar Colleges")
     ),
     
     mainPanel(
@@ -270,89 +272,92 @@ ui <- fluidPage(
     )
   )
 )
-  
-  #Server
 
+## Set up the server function
 server <- function(input, output) {
   
   filtered_data <- eventReactive(input$show_result, {
-    
     df <- feature3data
     
-    if(input$enrollment_filter == 0){
-      df <- select(df, !UGDS)
+    if (!1 %in% input$enrollment_filter) {
+      df <- select(df, -UGDS)
     }
-    
-    if(input$ACT_filter == 0){
-      df <- select(df, !ACT_MEDIAN)
+    if (!1 %in% input$ACT_filter) {
+      df <- select(df, -ACT_MEDIAN)
     }
-    
-    if(input$admission_filter == 0){
-      df <- select(df, !ADM_RATE)
+    if (!1 %in% input$admission_filter) {
+      df <- select(df, -ADM_RATE)
     }
-    
-    if(input$debt_filter == 0){
-      df <- select(df, !GRAD_DEBT_MDN)
+    if (!1 %in% input$debt_filter) {
+      df <- select(df, -GRAD_DEBT_MDN)
     }
     
     return(df)
-    
   })
   
   output$cluster_plot <- renderPlotly({
     df <- filtered_data()
     
-        if (!is.data.frame(df) || nrow(df) == 0) {
+    if (!is.data.frame(df) || nrow(df) == 0) {
       return(NULL)
-        }
+    }
     
-    # Scale features (exclude school name)
-features_scaled <- feature3data %>%
-  select(-INSTNM) %>%
-  scale()
-
-# K-means clustering
-k2 <- kmeans(features_scaled, centers = 2, nstart = 25)
-#swap centers with n (defined above)
-
-
-# Extract numeric features and scale
-school_names <- feature3data$INSTNM
-features_only <- feature3data %>% select(-INSTNM)
-scaled_features <- scale(features_only)
-
-# PCA for 2D visualization    
+    if ("INSTNM" %in% colnames(df)) {
+      school_names <- df$INSTNM
+      features <- select(df, -INSTNM)
+    } else {
+      school_names <- paste("School", 1:nrow(df))
+      features <- df
+    }
+    
+    features_scaled <- scale(features)
+    
+    # K-means clustering & PCA
+    k <- input$n_clusters
+    kmeans_result <- kmeans(features_scaled, centers = k, nstart = 25)
+    
     pca <- prcomp(features_scaled)
-pca_data <- as.data.frame(pca$x[, 1:2]) # PC1 and PC2
-pca_data$School <- feature3data$INSTNM
-pca_data$Cluster <- as.factor(k2$cluster)
-
-plot_ly(pca_data, 
-        x = ~PC1, 
-        y = ~PC2, 
-        type = 'scatter', 
-        mode = 'markers',
-        color = ~Cluster,
-        text = ~paste("School:", School,
-                      "<br>Cluster:", Cluster),
-        hoverinfo = 'text') %>%
-  layout(
-    title = "Interactive K-means Cluster Plot (PCA)",
-    xaxis = list(title = "Principal Component 1"),
-    yaxis = list(title = "Principal Component 2"),
-    annotations = list(
-      x = 0.5, y = 1,  # Positioning the subtitle
-      text = "Hover over on a point to see which school it is.",
-      showarrow = FALSE,
-      font = list(size = 14),
-      align = 'center',
-      xref = 'paper', yref = 'paper'
-  ))
+    pca_data <- as.data.frame(pca$x[, 1:2])
+    colnames(pca_data) <- c("PC1", "PC2")
+    pca_data$School <- school_names
+    pca_data$Cluster <- as.factor(kmeans_result$cluster)
     
+    # Show only the cluster of the school you want to find similar schools for
+    if ("1" %in% input$show_only_cluster) {
+      selected_school <- input$selected_inst
+      selected_cluster <- pca_data$Cluster[pca_data$School == selected_school]
+      
+      if (length(selected_cluster) > 0) {
+        pca_data <- pca_data[pca_data$Cluster == selected_cluster, ]
+      }
+    }
+    
+    plot_ly(pca_data,
+            x = ~PC1,
+            y = ~PC2,
+            type = 'scatter',
+            mode = 'markers',
+            color = ~Cluster,
+            text = ~paste("School:", School,
+                          "<br>Cluster:", Cluster),
+            hoverinfo = 'text') %>%
+      layout(
+        title = "Interactive K-means Cluster Plot (PCA)",
+        xaxis = list(title = "Principal Component 1"),
+        yaxis = list(title = "Principal Component 2"),
+        annotations = list(
+          x = 0.5, y = 1,
+          text = "Hover over a point to see which school it is.",
+          showarrow = FALSE,
+          font = list(size = 14),
+          align = 'center',
+          xref = 'paper', yref = 'paper'
+        )
+      )
   })
-    
 }
 
+## Build and run the app
 shinyApp(ui = ui, server = server)
 ```
 
