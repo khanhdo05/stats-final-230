@@ -33,7 +33,7 @@ This project explores higher education data from U.S. colleges to uncover trends
 
 # Data Cleaning
 
-```{r}
+```{r echo = F}
 # Load data
 data <- read.csv("https://raw.githubusercontent.com/khanhdo05/stats-final-230/refs/heads/main/Most-Recent-Cohorts-Institution.csv")
 ```

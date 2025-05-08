@@ -1,5 +1,5 @@
 ---
-title: "ShinyApp"
+title: "College Navigator: R Shiny App"
 author: "Khanh Do, Joyce Gill, Matthew Billings-Chiu"
 date: "`r Sys.Date()`"
 output:
@@ -21,29 +21,20 @@ library(plotly)
 library(DT)
 ```
 
-# Introduction and Research Motivation
+## Introduction and Research Motivation
 
-This project explores higher education data from U.S. colleges to uncover trends related to **admissions selectivity, student body diversity, and institutional outcomes** such as graduation rates. The goal is to build an interactive Shiny app to help users — such as students and parents compare colleges based on customizable filters like state, admission rates, SAT scores, demographics, and more. Our dataset is from the U.S. Department of Education College Scorecard's Most Recent Institution-Level Data File. 
-
-[Data Source - Most Recent Institution-Level Data](https://collegescorecard.ed.gov/data)
-
-# Data Cleaning
+This project explores higher education data from U.S. colleges to uncover trends related to **admissions selectivity, student body diversity, and similar colleges**. The goal is to build an interactive Shiny app to help users — such as students and parents compare and identify colleges based on customizable filters like state, admission rates, SAT scores, demographics, and more. Our dataset is from the U.S. Department of Education College Scorecard's Most Recent Institution-Level Data File. It contains over 3,300 columns and 6,600 rows ofinstitutional data. Technical Documentation containing a glossary of all relevant information regarding the College Scorecard Institution-Level Data. [Data Source - Most Recent Institution-Level Data](https://collegescorecard.ed.gov/data)
 
 ```{r echo = F, include = F}
 feature1data <- read.csv("cleaned_feature1data.csv")
 feature2data <- read.csv("cleaned_feature2data.csv")
-# feature3data <- read.csv("cleaned_feature3data.csv")
+feature3data <- read.csv("cleaned_feature3data.csv")
 ```
-
-## TODO:
-
-Use csv cleaned data instead of processing data in this file.
-
-Make all features into 1 shiny app instead of 3 shiny apps like right now.
 
 ```{r echo = F, include = F}
 ## Set up the UI object
 ui <- navbarPage("College Navigator",
+        ## Feature 1
          tabPanel("Racial Composition by Institution",
             sidebarLayout(position = "right",
                sidebarPanel(
@@ -56,6 +47,7 @@ ui <- navbarPage("College Navigator",
                      )
                 )
          ),
+        ## Feature 2
         tabPanel("College Finder",
           sidebarLayout(
             sidebarPanel(
@@ -80,12 +72,42 @@ ui <- navbarPage("College Navigator",
               dataTableOutput("school_info"),
               uiOutput("school_link")
             )
+          )
+        ),
+       ## Feature 3
+      tabPanel("Find Similar Colleges",
+        sidebarLayout(
+          sidebarPanel(
+            selectInput("selected_inst", "Select Institution",
+                        choices = sort(unique(feature3data$INSTNM))),
+            
+            checkboxGroupInput("show_only_cluster", "Show Only Cluster of Selected Institution",
+                               choices = list("Filter" = 1)),
+            
+            checkboxGroupInput("enrollment_filter", "Similar Enrollment Size",
+                               choices = list("Include" = 1)),
+            checkboxGroupInput("ACT_filter", "Similar Test Score",
+                               choices = list("Include" = 1)),
+            checkboxGroupInput("admission_filter", "Similar Admission Rate",
+                               choices = list("Include" = 1)),
+            checkboxGroupInput("debt_filter", "Similar Graduate Debt",
+                               choices = list("Include" = 1)),
+            
+            numericInput("n_clusters", "Number of Clusters (Specificity of Similarity)", value = 5, min = 2, max = 20),
+            
+            actionButton("show_result_3", "Show Similar Colleges")
+          ),
+          
+          mainPanel(
+            plotlyOutput("cluster_plot")
+          )
         )
-     )
+      )
 )
 
 ## Set up the server function
 server <- function(input, output){
+  ## Feature 1
   output$racePie <- renderPlotly({
     selected_data <- feature1data %>%
       filter(INSTNM == input$selected_inst)
@@ -108,6 +130,7 @@ server <- function(input, output){
     ) %>%
       layout(title = paste("Racial Composition of", input$selected_inst))
   })
+  ## Feature 2
   filtered_data <- eventReactive(input$show_result, {
     df <- feature2data
 
@@ -193,7 +216,10 @@ server <- function(input, output){
         ) %>%
         filter(SAT_AVG == event$x, ADM_RATE == event$y)
 
-      if (nrow(clicked) == 0) return(NULL)
+      if (nrow(clicked) == 0) {
+        showNotification("No matching school found for the selected point.", type = "error")
+        return(NULL)
+      }
 
       # Select the relevant columns to display in the table
       clicked %>%
@@ -230,94 +256,72 @@ server <- function(input, output){
       "Visit School Website"
     )
   })
-}
-
-
-## Build and run the 
-shinyApp(ui, server)
-```
-
-
-FEATURE 3:
-
-```{r}
-## Set up the UI object
-ui <- fluidPage(
-  titlePanel("Find Similar Colleges"),
-  
-  sidebarLayout(
-    sidebarPanel(
-      selectInput("selected_inst", "Select Institution",
-                  choices = sort(unique(feature3data$INSTNM))),
-      
-      checkboxGroupInput("show_only_cluster", "Show Only Cluster of Selected Institution",
-                         choices = list("Filter" = 1)),
-      
-      checkboxGroupInput("enrollment_filter", "Similar Enrollment Size",
-                         choices = list("Include" = 1)),
-      checkboxGroupInput("ACT_filter", "Similar Test Score",
-                         choices = list("Include" = 1)),
-      checkboxGroupInput("admission_filter", "Similar Admission Rate",
-                         choices = list("Include" = 1)),
-      checkboxGroupInput("debt_filter", "Similar Graduate Debt",
-                         choices = list("Include" = 1)),
-      
-      numericInput("n_clusters", "Number of Clusters (Specificity of Similarity)", value = 5, min = 2, max = 20),
-      
-      actionButton("show_result", "Show Similar Colleges")
-    ),
-    
-    mainPanel(
-      plotlyOutput("cluster_plot")
-    )
-  )
-)
-
-## Set up the server function
-server <- function(input, output) {
-  
-  filtered_data <- eventReactive(input$show_result, {
-    df <- feature3data
+  ## Feature 3
+   filtered_data_3 <- eventReactive(input$show_result_3, {
+    df_pca <- feature3data
     
     if (!1 %in% input$enrollment_filter) {
-      df <- select(df, -UGDS)
+      df_pca <- select(df_pca, -UGDS)
     }
     if (!1 %in% input$ACT_filter) {
-      df <- select(df, -ACT_MEDIAN)
+      df_pca <- select(df_pca, -ACT_MEDIAN)
     }
     if (!1 %in% input$admission_filter) {
-      df <- select(df, -ADM_RATE)
+      df_pca <- select(df_pca, -ADM_RATE)
     }
     if (!1 %in% input$debt_filter) {
-      df <- select(df, -GRAD_DEBT_MDN)
+      df_pca <- select(df_pca, -GRAD_DEBT_MDN)
     }
     
-    return(df)
+    return(df_pca)
   })
   
   output$cluster_plot <- renderPlotly({
-    df <- filtered_data()
+    df_pca <- filtered_data_3()
     
-    if (!is.data.frame(df) || nrow(df) == 0) {
+    if (!is.data.frame(df_pca) || nrow(df_pca) == 0) {
       return(NULL)
     }
     
-    if ("INSTNM" %in% colnames(df)) {
-      school_names <- df$INSTNM
-      features <- select(df, -INSTNM)
+    if ("INSTNM" %in% colnames(df_pca)) {
+      school_names <- df_pca$INSTNM
+      features <- select(df_pca, -INSTNM)
     } else {
-      school_names <- paste("School", 1:nrow(df))
-      features <- df
+      school_names <- paste("School", 1:nrow(df_pca))
+      features <- df_pca
     }
     
     features_scaled <- scale(features)
     
     # K-means clustering & PCA
     k <- input$n_clusters
-    kmeans_result <- kmeans(features_scaled, centers = k, nstart = 25)
+    if (nrow(features_scaled) < k) {
+      showNotification("Too few schools to form this many clusters. Please reduce the number of clusters.", type = "error")
+      return(NULL)
+    }
+    kmeans_result <- tryCatch({
+      kmeans(features_scaled, centers = k, nstart = 25)
+    }, error = function(e) {
+      showNotification("Clustering failed: Try selecting more variables or fewer clusters.", type = "error")
+      return(NULL)
+    })
+    if (is.null(kmeans_result)) return(NULL)
+
+
+    pca <- tryCatch({
+      prcomp(features_scaled)
+    }, error = function(e) {
+      showNotification("PCA failed: Not enough variables for dimensionality reduction.", type = "error")
+      return(NULL)
+    })
+    if (is.null(pca)) return(NULL)
     
-    pca <- prcomp(features_scaled)
-    pca_data <- as.data.frame(pca$x[, 1:2])
+   if (ncol(pca$x) < 2) {
+      showNotification("PCA failed: not enough dimensions to display 2 components. Select more or different variables.", type = "error")
+      return(NULL)
+    }
+
+pca_data <- as.data.frame(pca$x[, 1:2])
     colnames(pca_data) <- c("PC1", "PC2")
     pca_data$School <- school_names
     pca_data$Cluster <- as.factor(kmeans_result$cluster)
@@ -325,12 +329,16 @@ server <- function(input, output) {
     # Show only the cluster of the school you want to find similar schools for
     if ("1" %in% input$show_only_cluster) {
       selected_school <- input$selected_inst
-      selected_cluster <- pca_data$Cluster[pca_data$School == selected_school]
-      
-      if (length(selected_cluster) > 0) {
-        pca_data <- pca_data[pca_data$Cluster == selected_cluster, ]
+  
+      if (!(selected_school %in% pca_data$School)) {
+        showNotification("Selected institution not found in clustered data.", type = "error")
+        return(NULL)
       }
-    }
+  
+    selected_cluster <- pca_data$Cluster[pca_data$School == selected_school][1]
+    pca_data <- pca_data[pca_data$Cluster == selected_cluster, ]
+  }
+
     
     plot_ly(pca_data,
             x = ~PC1,
@@ -357,14 +365,9 @@ server <- function(input, output) {
   })
 }
 
-## Build and run the app
-shinyApp(ui = ui, server = server)
+## Build and run the 
+shinyApp(ui, server)
 ```
-
-
-
-
-
 
 ## Feature 1
 
@@ -380,4 +383,19 @@ The app will include a plot that allows users to filter colleges based on median
 
 ## One Relevant Finding
 
-We used our app to choose a college. Some of the characteristics we were looking for in a college were: SAT Average Range (1485 - 1600), Admission Rate Range (0 - 0.2), Private Institution, and Rural/Town Location. We first used Feature 2: College Finder to narrow down our list. Based on Feature 2, it seemed like Dartmouth College, Williams College, Bowdoin College, Washington and Lee University, Colby College,  Middlebury College, and Grinnell College. We then used Feature 1: Racial Composition by Institution. While most of the colleges had relatively similar racial compositions, Washington and Lee University was the least diverse by a large margin, so we decided to remove Washington and Lee University from our list of colleges.
+We used our app to guide our college selection process based on specific criteria: SAT average range (1000-1200), admission rate (0.6-0.7), private institution, and rural or town location. Using Feature 2, we narrowed our list to options such as Abilene Christian University, Maryville College, Concordia College at Moorhead, and Northwest Nazarene University. Next, we used Feature 1 to evaluate racial diversity, and identified Abilene Christian University as one of the more diverse schools. Finally, Feature 3 allowed us to find institutions similar to Abilene Christian University, further supporting our search and expanding our list of potential colleges.
+
+## Level of Difficulty
+
+Our app consists of three distinct, fully interactive features, each offering insights into U.S. colleges from different perspectives: racial composition, admissions data, and clustering of similar institutions. Based on its scope, complexity, and design, we argue that our project meets the criteria for A-level diffculty for the following reasons:
+
+1. The app integrates a large, real-world dataset with over 3,300 columns and 6,600 rows, requiring substantial filtering, reshaping, and preprocessing. We used a wide range of dplyr, tidyr, and conditional logic functions to make the dataset efficient and responsive. Across features, we also implemented multi-step reactive pipelines that accomodate multiple user-selected filters, PCA preparation, and K-means clustering.
+
+2. Each tab of the app features a well-structured, informative, and aesthetically pleasing visualizations. We customized titles, tooltips, color schemes, and layout to ensure that the visualizations are not only accurate but also engaging and easy to interpret.  
+
+3. Our app prioritizes usability and functionality. Users can filter colleges based on detailed criteria, explore interactive plots, click to view institution-specific details, and visit official websites. They can also visualize racial demographics or identify similar colleges baed on selected characteristics. This goes well beyond basic dropdown menus, offering a meaningful, personalized exploration experience.
+
+4. Our code is clean, modular, and reactive, making the app efficient and scalable. 
+
+5. We implemented robust error handling to address edge cases with dynamic UI feedback. We also integrated PCA, clustering, and plotly -- topics that required independent research beyond what was covered in class.
+
