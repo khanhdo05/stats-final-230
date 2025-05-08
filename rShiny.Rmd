@@ -23,7 +23,15 @@ library(DT)
 
 ## Introduction and Research Motivation
 
-This project explores higher education data from U.S. colleges to uncover trends related to **admissions selectivity, student body diversity, and similar colleges**. The goal is to build an interactive Shiny app to help users — such as students and parents compare and identify colleges based on customizable filters like state, admission rates, SAT scores, demographics, and more. Our dataset is from the U.S. Department of Education College Scorecard's Most Recent Institution-Level Data File. It contains over 3,300 columns and 6,600 rows of institutional data. Technical Documentation containing a glossary of all relevant information regarding the College Scorecard Institution-Level Data. [Data Source - Most Recent Institution-Level Data](https://collegescorecard.ed.gov/data)
+This project explores higher education data from U.S. colleges to uncover trends related to **admissions selectivity, student body diversity, and similar colleges**. The goal is to build an interactive Shiny app to help users — such as students and parents compare and identify colleges based on customizable filters like state, admission rates, SAT scores, demographics, and more. 
+
+## Data Source 
+
+Our dataset is from the U.S. Department of Education College Scorecard's Most Recent Institution-Level Data File. It contains over 6,600 rows, each pertaining to one college, and 3,300 columns for institutional characteristics, enrollment, student aid, costs, and student outcomes. It was last updated on April 23, 2025 and it records information from school year 1996-96 to 2022-23. 
+
+[Data Documentation](https://collegescorecard.ed.gov/data/data-documentation/) containing a glossary of all relevant information regarding the College Scorecard Institution-Level Data. 
+
+[Data Source - Most Recent Institution-Level Data](https://collegescorecard.ed.gov/data)
 
 ```{r echo = F, include = F}
 feature1data <- read.csv("cleaned_feature1data.csv")
@@ -390,13 +398,13 @@ We used our app to guide our college selection process based on specific criteri
 
 Our app consists of three distinct, fully interactive features, each offering insights into U.S. colleges from different perspectives: racial composition, admissions data, and clustering of similar institutions. Based on its scope, complexity, and design, we argue that our project meets the criteria for A-level diffculty for the following reasons:
 
-1. The app integrates a large, real-world dataset with over 3,300 columns and 6,600 rows, requiring substantial filtering, reshaping, and preprocessing. We used a wide range of dplyr, tidyr, and conditional logic functions to make the dataset efficient and responsive. Across features, we also implemented multi-step reactive pipelines that accomodate multiple user-selected filters, PCA preparation, and K-means clustering.
+1. The app integrates a large, real-world dataset with over 3,300 columns and 6,600 rows, requiring substantial filtering, reshaping, and preprocessing. We used a wide range of `dplyr`, `tidyr`, and conditional logic functions to make the dataset efficient and responsive. Some functions used were `select`, `filter`, `mutate`, `as.TYPE`, `drop.na`, `as.factor`, etc. Across features, we also implemented multi-step reactive pipelines that accomodate multiple user-selected filters, PCA preparation, and K-means clustering.
 
 2. Each tab of the app features a well-structured, informative, and aesthetically pleasing visualizations. We customized titles, tooltips, color schemes, and layout to ensure that the visualizations are not only accurate but also engaging and easy to interpret.  
 
-3. Our app prioritizes usability and functionality. Users can filter colleges based on detailed criteria, explore interactive plots, click to view institution-specific details, and visit official websites. They can also visualize racial demographics or identify similar colleges baed on selected characteristics. This goes well beyond basic dropdown menus, offering a meaningful, personalized exploration experience.
+3. Our app prioritizes usability and functionality. Users can filter colleges based on detailed criteria, explore interactive plots, click to view institution-specific details, and visit official websites through embedded links. They can also visualize racial demographics or identify similar colleges based on selected characteristics. This goes well beyond basic drop-down menus, offering a meaningful, personalized exploration experience.
 
-4. Our code is clean, modular, and reactive, making the app efficient and scalable. 
+4. Our code is clean, modular, and reactive, making the app efficient and scale-able. We also document our code well.
 
-5. We implemented robust error handling to address edge cases with dynamic UI feedback. We also integrated PCA, clustering, and plotly -- topics that required independent research beyond what was covered in class.
+5. We implemented robust error handling to address edge cases with dynamic UI feedback. We also integrated PCA, clustering, and plotly - topics that required independent research beyond what was covered in class. Most of the interactive features in our Shiny app also requires a lot of independent research beyond class materials.
 
