@@ -23,7 +23,7 @@ library(DT)
 
 ## Introduction and Research Motivation
 
-This project explores higher education data from U.S. colleges to uncover trends related to **admissions selectivity, student body diversity, and similar colleges**. The goal is to build an interactive Shiny app to help users — such as students and parents compare and identify colleges based on customizable filters like state, admission rates, SAT scores, demographics, and more. Our dataset is from the U.S. Department of Education College Scorecard's Most Recent Institution-Level Data File. It contains over 3,300 columns and 6,600 rows ofinstitutional data. Technical Documentation containing a glossary of all relevant information regarding the College Scorecard Institution-Level Data. [Data Source - Most Recent Institution-Level Data](https://collegescorecard.ed.gov/data)
+This project explores higher education data from U.S. colleges to uncover trends related to **admissions selectivity, student body diversity, and similar colleges**. The goal is to build an interactive Shiny app to help users — such as students and parents compare and identify colleges based on customizable filters like state, admission rates, SAT scores, demographics, and more. Our dataset is from the U.S. Department of Education College Scorecard's Most Recent Institution-Level Data File. It contains over 3,300 columns and 6,600 rows of institutional data. Technical Documentation containing a glossary of all relevant information regarding the College Scorecard Institution-Level Data. [Data Source - Most Recent Institution-Level Data](https://collegescorecard.ed.gov/data)
 
 ```{r echo = F, include = F}
 feature1data <- read.csv("cleaned_feature1data.csv")
