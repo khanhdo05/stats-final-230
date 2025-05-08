@@ -14,6 +14,10 @@ Joyce Gill, Khanh Do, Matthew Billings-Chiu
 - Support college decision-making for students and parents.
 - Built using R Shiny for interactive data exploration.
 
+## Deployed App
+
+https://khanhdo05.shinyapps.io/stats-final-230/
+
 ## Data
 
 Our dataset is from the U.S. Department of Education College Scorecard's Most Recent Institution-Level Data File. It contains over 6,600 rows, each pertaining to one college, and 3,300 columns for institutional characteristics, enrollment, student aid, costs, and student outcomes. It was last updated on April 23, 2025 and it records information from school year 1996-96 to 2022-23. 
@@ -24,7 +28,7 @@ Our dataset is from the U.S. Department of Education College Scorecard's Most Re
 
 [Data Source - Most Recent Institution-Level Data](https://collegescorecard.ed.gov/data)
 
-## App Demo
+## App Screenshots
 
 ![image](https://github.com/user-attachments/assets/a46ff724-f737-4eeb-8e43-f1c90e70fdc4)
 
