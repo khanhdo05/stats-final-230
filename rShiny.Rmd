@@ -78,6 +78,7 @@ ui <- navbarPage("College Navigator",
       tabPanel("Find Similar Colleges",
         sidebarLayout(
           sidebarPanel(
+            #p("The number of colleges has been filtered to only include colleges that contain all data relevant to the clustering variables"),
             selectInput("selected_inst", "Select Institution",
                         choices = sort(unique(feature3data$INSTNM))),
             
@@ -365,7 +366,7 @@ pca_data <- as.data.frame(pca$x[, 1:2])
   })
 }
 
-## Build and run the 
+
 shinyApp(ui, server)
 ```
 
