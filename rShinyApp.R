@@ -5,9 +5,19 @@ library(tidyverse)
 library(tidyr)
 library(plotly)
 library(DT)
+
+# Read data
 feature1data <- read.csv("cleaned_feature1data.csv")
 feature2data <- read.csv("cleaned_feature2data.csv")
 feature3data <- read.csv("cleaned_feature3data.csv")
+
+# Centralized institution list (sorted and unique)
+all_institutions <- sort(unique(c(
+  feature1data$INSTNM,
+  feature2data$INSTNM,
+  feature3data$INSTNM
+)))
+
 ui <- navbarPage("College Navigator", id = "navbar",
                  ## Feature 1
                  tabPanel("College Finder",
@@ -41,7 +51,7 @@ ui <- navbarPage("College Navigator", id = "navbar",
                           sidebarLayout(position = "right",
                                         sidebarPanel(
                                           selectInput("selected_inst", "Select Institution:",
-                                                      choices = sort(unique(feature1data$INSTNM)),
+                                                      choices = all_institutions,
                                                       selected = "Grinnell College")
                                         ),
                                         mainPanel(
@@ -55,7 +65,7 @@ ui <- navbarPage("College Navigator", id = "navbar",
                             sidebarPanel(
                               #p("The number of colleges has been filtered to only include colleges that contain all data relevant to the clustering variables"),
                               selectInput("selected_inst_2", "Select Institution",
-                                          choices = sort(unique(feature3data$INSTNM))),
+                                          choices = all_institutions),
                               
                               checkboxGroupInput("show_only_cluster", "Show Only Cluster of Selected Institution",
                                                  choices = list("Filter" = 1)),
@@ -89,11 +99,37 @@ server <- function(input, output){
   output$racePie <- renderPlotly({
     selected_data <- feature1data %>%
       filter(INSTNM == input$selected_inst)
+    
     race_labels <- c("White", "Black", "Hispanic", "Asian", "American Indian/Alaska Native", "Native Hawaiian/Pacific Islander",
                      "Two or More", "Non-Resident Alien", "Unknown")
     
     race_columns <- c("UGDS_WHITE", "UGDS_BLACK", "UGDS_HISP", "UGDS_ASIAN",
                       "UGDS_AIAN", "UGDS_NHPI", "UGDS_2MOR", "UGDS_NRA", "UGDS_UNKN")
+    
+    if (nrow(selected_data) == 0) {
+      # Fallback pie if no data found at all
+      return(plot_ly(
+        labels = c("No data"),    # Keep a label to preserve layout
+        values = c(1),
+        type = "pie",
+        marker = list(colors = c("lightgrey")),
+        textinfo = "label",       # Reserve space like normal pie
+        textfont = list(color = 'lightgrey'),  # Make the label visually disappear
+        hoverinfo = "none"
+      ) %>%
+        layout(
+          title = paste("Racial Composition of", input$selected_inst),
+          showlegend = FALSE,
+          annotations = list(
+            text = "No valid racial data available",
+            showarrow = FALSE,
+            font = list(size = 16),
+            x = 0.5, y = 0.5,
+            xref = "paper", yref = "paper"
+          )
+        ))
+      
+    }
     
     race_values <- as.numeric(selected_data[1, race_columns])
     
@@ -108,6 +144,7 @@ server <- function(input, output){
     ) %>%
       layout(title = paste("Racial Composition of", input$selected_inst))
   })
+  
   ## Feature: Filter College
   filtered_data <- eventReactive(input$show_result, {
     df <- feature2data
