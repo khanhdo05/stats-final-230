@@ -8,7 +8,7 @@ library(DT)
 feature1data <- read.csv("cleaned_feature1data.csv")
 feature2data <- read.csv("cleaned_feature2data.csv")
 feature3data <- read.csv("cleaned_feature3data.csv")
-ui <- navbarPage("College Navigator",
+ui <- navbarPage("College Navigator", id = "navbar",
                  ## Feature 1
                  tabPanel("College Finder",
                           sidebarLayout(
@@ -83,7 +83,9 @@ ui <- navbarPage("College Navigator",
 
 ## Set up the server function
 server <- function(input, output){
-  ## Feature 1
+  selected_college <- reactiveValues(name = NULL)
+  
+  ## Feature: Racial Composition
   output$racePie <- renderPlotly({
     selected_data <- feature1data %>%
       filter(INSTNM == input$selected_inst)
@@ -106,7 +108,7 @@ server <- function(input, output){
     ) %>%
       layout(title = paste("Racial Composition of", input$selected_inst))
   })
-  ## Feature 2
+  ## Feature: Filter College
   filtered_data <- eventReactive(input$show_result, {
     df <- feature2data
     
@@ -197,17 +199,35 @@ server <- function(input, output){
       return(NULL)
     }
     
+    clicked <- clicked %>%
+      select(School = INSTNM, SAT_Avg = SAT_AVG, Admission_Rate = ADM_RATE)
+    
+    clicked$ViewRace <- paste0(
+      '<button class="btn btn-primary btn-sm action-button" id="view_', 
+      clicked$School, 
+      '" onclick="Shiny.setInputValue(\'go_to_race\', \'', 
+      clicked$School, 
+      '\', {priority: \'event\'})">View Racial Composition</button>'
+    )
+    
+    datatable(clicked, escape = FALSE, options = list(
+      pageLength = 5,      # Number of rows per page
+      dom = 't',           # Only show the table (remove search and entries)
+      searching = FALSE,   # Disable the search bar
+      lengthChange = FALSE # Remove the "Show entries" dropdown
+    ))
+    
     # Select the relevant columns to display in the table
-    clicked %>%
-      select(School = INSTNM, SAT_Avg = SAT_AVG, Admission_Rate = ADM_RATE) %>%
-      datatable(
-        options = list(
-          pageLength = 5,      # Number of rows per page
-          dom = 't',           # Only show the table (remove search and entries)
-          searching = FALSE,   # Disable the search bar
-          lengthChange = FALSE # Remove the "Show entries" dropdown
-        )
-      )
+    # clicked %>%
+    #   select(School = INSTNM, SAT_Avg = SAT_AVG, Admission_Rate = ADM_RATE) %>%
+    #   datatable(
+    #     options = list(
+    #       pageLength = 5,      
+    #       dom = 't',           
+    #       searching = FALSE,   
+    #       lengthChange = FALSE 
+    #     )
+    #   )
   })
   
   # Show clickable URL
@@ -232,7 +252,7 @@ server <- function(input, output){
       "Visit School Website"
     )
   })
-  ## Feature 3
+  ## Feature: Find Similar Colleges
   filtered_data_3 <- eventReactive(input$show_result_3, {
     df_pca <- feature3data
     
@@ -338,6 +358,12 @@ server <- function(input, output){
           xref = 'paper', yref = 'paper'
         )
       )
+  })
+  
+  observeEvent(input$go_to_race, {
+    selected_college$name <- input$go_to_race
+    updateSelectInput(inputId = "selected_inst", selected = selected_college$name)
+    updateTabsetPanel(session = getDefaultReactiveDomain(), inputId = "navbar", selected = "Racial Composition by Institution")
   })
 }
 
