@@ -47,7 +47,7 @@ ui <- navbarPage("College Navigator", id = "navbar",
                           )
                  ),
                  ## Feature 2
-                 tabPanel("Racial Composition by Institution",
+                 tabPanel("Gender & Racial Composition by Institution",
                           sidebarLayout(position = "right",
                                         sidebarPanel(
                                           selectInput("selected_inst", "Select Institution:",
@@ -55,6 +55,7 @@ ui <- navbarPage("College Navigator", id = "navbar",
                                                       selected = "Grinnell College")
                                         ),
                                         mainPanel(
+                                          plotlyOutput('genderPie'),
                                           plotlyOutput('racePie')
                                         )
                           )
@@ -94,6 +95,52 @@ ui <- navbarPage("College Navigator", id = "navbar",
 ## Set up the server function
 server <- function(input, output){
   selected_college <- reactiveValues(name = NULL)
+  
+  ## Feature: Gender Composition
+  output$genderPie <- renderPlotly({
+    selected_data <- feature1data %>%
+      filter(INSTNM == input$selected_inst)
+    
+    gender_labels <- c("Men", "Women")
+    gender_columns <- c("UGDS_MEN", "UGDS_WOMEN")
+    
+    if (nrow(selected_data) == 0) {
+      # Fallback pie if no data found at all
+      return(plot_ly(
+        labels = c("No data"),
+        values = c(1),
+        type = "pie",
+        marker = list(colors = c("lightgrey")),
+        textinfo = "label",
+        textfont = list(color = 'lightgrey'),
+        hoverinfo = "none"
+      ) %>%
+        layout(
+          title = paste("Gender Composition of", input$selected_inst),
+          showlegend = FALSE,
+          annotations = list(
+            text = "No valid gender data available",
+            showarrow = FALSE,
+            font = list(size = 16),
+            x = 0.5, y = 0.5,
+            xref = "paper", yref = "paper"
+          )
+        ))
+    }
+    
+    gender_values <- as.numeric(selected_data[1, gender_columns])
+    
+    valid_indices <- !is.na(gender_values) & gender_values > 0
+    gender_labels <- gender_labels[valid_indices]
+    gender_values <- gender_values[valid_indices]
+    
+    plot_ly(
+      labels = gender_labels,
+      values = gender_values,
+      type = "pie"
+    ) %>%
+      layout(title = paste("Gender Composition of", input$selected_inst))
+  })
   
   ## Feature: Racial Composition
   output$racePie <- renderPlotly({
@@ -144,6 +191,8 @@ server <- function(input, output){
     ) %>%
       layout(title = paste("Racial Composition of", input$selected_inst))
   })
+  
+
   
   ## Feature: Filter College
   filtered_data <- eventReactive(input$show_result, {
@@ -236,16 +285,16 @@ server <- function(input, output){
       return(NULL)
     }
     
-    clicked <- clicked %>%
-      select(School = INSTNM, SAT_Avg = SAT_AVG, Admission_Rate = ADM_RATE)
-    
-    clicked$ViewRace <- paste0(
+    clicked$ViewDemographics <- paste0(
       '<button class="btn btn-primary btn-sm action-button" id="view_', 
-      clicked$School, 
+      clicked$INSTNM, 
       '" onclick="Shiny.setInputValue(\'go_to_race\', \'', 
-      clicked$School, 
-      '\', {priority: \'event\'})">View Racial Composition</button>'
+      clicked$INSTNM, 
+      '\', {priority: \'event\'})">View Gender & Racial Composition</button>'
     )
+    
+    clicked <- clicked %>%
+      select(School = INSTNM, SAT_Avg = SAT_AVG, Admission_Rate = ADM_RATE, Demographics = ViewDemographics)
     
     datatable(clicked, escape = FALSE, options = list(
       pageLength = 5,      # Number of rows per page
@@ -400,7 +449,7 @@ server <- function(input, output){
   observeEvent(input$go_to_race, {
     selected_college$name <- input$go_to_race
     updateSelectInput(inputId = "selected_inst", selected = selected_college$name)
-    updateTabsetPanel(session = getDefaultReactiveDomain(), inputId = "navbar", selected = "Racial Composition by Institution")
+    updateTabsetPanel(session = getDefaultReactiveDomain(), inputId = "navbar", selected = "Gender & Racial Composition by Institution")
   })
 }
 

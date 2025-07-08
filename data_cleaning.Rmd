@@ -86,15 +86,15 @@ print(nrow(cleaned_data))
 write_csv(cleaned_data, "cleaned_data.csv")
 ```
 
-## Racial Composition
+## Gender & Racial Composition
 
-Users will be able to select an institution and view its racial composition through a Plotly pie chart, using variables like `UGDS_WHITE`, `UGDS_BLACK`, `UGDS_HISP`, `UGDS_ASIAN`, and more. The chart will display raw percentages when hovering over each slice, giving a quick and clear breakdown of the student body.
+Users will be able to select an institution and view its gender and racial composition through two separate Plotly pie charts. The gender chart will show the breakdown of `UGDS_MEN` and `UGDS_WOMEN`, while the racial chart will display variables like `UGDS_WHITE`, `UGDS_BLACK`, `UGDS_HISP`, `UGDS_ASIAN`, and more. Both charts will display raw percentages when hovering over each slice, giving a quick and clear breakdown of the student body demographics.
 
 ```{r}
 # Data cleaning
 feature1data <- data %>%
-  dplyr::select(INSTNM, UGDS_WHITE, UGDS_BLACK, UGDS_HISP, UGDS_ASIAN, UGDS_AIAN, UGDS_NHPI, UGDS_2MOR, UGDS_NRA, UGDS_UNKN) %>%
-  filter(!(is.na(UGDS_WHITE) & is.na(UGDS_BLACK) & is.na(UGDS_HISP) & is.na(UGDS_ASIAN) & is.na(UGDS_AIAN) & is.na(UGDS_NHPI) & is.na(UGDS_2MOR) & is.na(UGDS_NRA) & is.na(UGDS_UNKN))) 
+  dplyr::select(INSTNM, UGDS_MEN, UGDS_WOMEN, UGDS_WHITE, UGDS_BLACK, UGDS_HISP, UGDS_ASIAN, UGDS_AIAN, UGDS_NHPI, UGDS_2MOR, UGDS_NRA, UGDS_UNKN) %>%
+  filter(!(is.na(UGDS_MEN) & is.na(UGDS_WOMEN) & is.na(UGDS_WHITE) & is.na(UGDS_BLACK) & is.na(UGDS_HISP) & is.na(UGDS_ASIAN) & is.na(UGDS_AIAN) & is.na(UGDS_NHPI) & is.na(UGDS_2MOR) & is.na(UGDS_NRA) & is.na(UGDS_UNKN))) 
 
 # Write to csv file
 write_csv(feature1data, "cleaned_feature1data.csv")
@@ -105,6 +105,20 @@ selected_inst <- "Grinnell College"
 selected_data <- feature1data %>%
   filter(INSTNM == selected_inst)
 
+# Gender chart
+gender_labels <- c("Men", "Women")
+gender_columns <- c("UGDS_MEN", "UGDS_WOMEN")
+gender_values <- as.numeric(selected_data[1, gender_columns])
+
+gender_chart <- plot_ly(
+  labels = gender_labels,
+  values = gender_values,
+  type = "pie",
+  name = "Gender"
+) %>%
+  layout(title = paste("Gender Composition of", selected_inst))
+
+# Racial chart
 race_labels <- c("White", "Black", "Hispanic", "Asian", 
                  "American Indian/Alaska Native", "Native Hawaiian/Pacific Islander",
                  "Two or More", "Non-Resident Alien", "Unknown")
@@ -114,12 +128,17 @@ race_columns <- c("UGDS_WHITE", "UGDS_BLACK", "UGDS_HISP", "UGDS_ASIAN",
 
 race_values <- as.numeric(selected_data[1, race_columns])
 
-plot_ly(
+race_chart <- plot_ly(
   labels = race_labels,
   values = race_values,
-  type = "pie"
+  type = "pie",
+  name = "Race"
 ) %>%
   layout(title = paste("Racial Composition of", selected_inst))
+
+# Display both charts
+gender_chart
+race_chart
 ```
 
 ![Interactive pie chart](./feat1.png)
