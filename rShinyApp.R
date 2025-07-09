@@ -48,17 +48,18 @@ ui <- navbarPage("College Navigator", id = "navbar",
                  ),
                  ## Feature 2
                  tabPanel("Gender & Racial Composition by Institution",
-                          sidebarLayout(position = "right",
-                                        sidebarPanel(
-                                          selectizeInput("selected_inst", "Select Institution:",
-                                                      choices = all_institutions,
-                                                      selected = "Grinnell College",
-                                                      options = list(maxItems = 1))
-                                        ),
-                                        mainPanel(
-                                          plotlyOutput('genderPie'),
-                                          plotlyOutput('racePie')
-                                        )
+                          fluidRow(
+                            column(12,
+                              selectizeInput("selected_inst", "Select Institution:",
+                                          choices = all_institutions,
+                                          selected = "Grinnell College",
+                                          options = list(maxItems = 1),
+                                          width = "100%")
+                            )
+                          ),
+                          fluidRow(
+                            column(6, plotlyOutput('genderPie', height = "600px")),
+                            column(6, plotlyOutput('racePie', height = "600px"))
                           )
                  ),
                  ## Feature 3
@@ -68,7 +69,8 @@ ui <- navbarPage("College Navigator", id = "navbar",
                               #p("The number of colleges has been filtered to only include colleges that contain all data relevant to the clustering variables"),
                               selectizeInput("selected_inst_2", "Select Institution",
                                           choices = all_institutions,
-                                          options = list(maxItems = 1)),
+                                          options = list(maxItems = 1),
+                                          width = "100%"),
                               
                               checkboxGroupInput("show_only_cluster", "Show Only Cluster of Selected Institution",
                                                  choices = list("Filter" = 1)),
@@ -101,15 +103,17 @@ ui <- navbarPage("College Navigator", id = "navbar",
                  tabPanel("College Comparison",
                           sidebarLayout(
                             sidebarPanel(
-                              h4("Select Two Colleges to Compare"),
-                              selectizeInput("college1", "First College:",
+                              h4("Select Two Institutions to Compare"),
+                              selectizeInput("college1", "First Institution:",
                                           choices = all_institutions,
                                           selected = "Grinnell College",
-                                          options = list(maxItems = 1)),
-                              selectizeInput("college2", "Second College:",
+                                          options = list(maxItems = 1),
+                                          width = "100%"),
+                              selectizeInput("college2", "Second Institution:",
                                           choices = all_institutions,
                                           selected = "Carleton College",
-                                          options = list(maxItems = 1)),
+                                          options = list(maxItems = 1),
+                                          width = "100%"),
                               hr(),
                               h4("Comparison Categories"),
                               checkboxGroupInput("compare_categories", "Select categories to compare:",
@@ -119,17 +123,12 @@ ui <- navbarPage("College Navigator", id = "navbar",
                                                    "Admissions" = "admissions"
                                                  ),
                                                  selected = c("demographics", "institution_info", "admissions")),
-                              # actionButton("compare_colleges", "Compare Colleges", class = "btn-primary") # Removed actionButton
                             ),
                             mainPanel(
                               conditionalPanel(
                                 condition = "input.compare_categories.length > 0", # Changed condition
                                 h3("College Comparison Results"),
                                 hr(),
-
-
-
-                                # Add new/merged comparison panels in mainPanel
 
                                 conditionalPanel(
                                   condition = "'institution_info' in input.compare_categories",
@@ -172,6 +171,9 @@ server <- function(input, output){
         layout(
           title = paste("Gender Composition of", input$selected_inst),
           showlegend = FALSE,
+          margin = list(l = 50, r = 50, t = 60, b = 50),
+          height = 400,
+          autosize = TRUE,
           annotations = list(
             text = "No valid gender data available",
             showarrow = FALSE,
@@ -188,12 +190,35 @@ server <- function(input, output){
     gender_labels <- gender_labels[valid_indices]
     gender_values <- gender_values[valid_indices]
     
+    gender_percentages <- gender_values * 100
+    gender_text <- ifelse(gender_percentages >= 1, gender_labels, "")
     plot_ly(
       labels = gender_labels,
-      values = gender_values,
-      type = "pie"
+      values = gender_percentages,
+      type = "pie",
+      domain = list(x = c(0.10, 0.90), y = c(0.10, 0.90)),
+      text = gender_text,
+      textinfo = "text",
+      textposition = "outside",
+      hovertemplate = "%{label}<br>%{value:.1f}%<extra></extra>"
     ) %>%
-      layout(title = paste("Gender Composition of", input$selected_inst))
+      layout(
+        title = paste("Gender Composition of", input$selected_inst),
+        margin = list(l = 50, r = 50, t = 80, b = 160),
+        height = 600,
+        autosize = FALSE,
+        title = list(
+          x = 0.5,
+          xanchor = "center",
+          font = list(size = 14)
+        ),
+        legend = list(
+          x = 0.5,
+          y = -0.05,
+          xanchor = "center",
+          orientation = "h"
+        )
+      )
   })
   
   ## Feature: Racial Composition
@@ -221,6 +246,9 @@ server <- function(input, output){
         layout(
           title = paste("Racial Composition of", input$selected_inst),
           showlegend = FALSE,
+          margin = list(l = 50, r = 50, t = 60, b = 50),
+          height = 400,
+          autosize = TRUE,
           annotations = list(
             text = "No valid racial data available",
             showarrow = FALSE,
@@ -238,15 +266,37 @@ server <- function(input, output){
     race_labels <- race_labels[valid_indices]
     race_values <- race_values[valid_indices]
     
+    race_percentages <- race_values * 100
+    race_text <- ifelse(race_percentages >= 1, race_labels, "")
     plot_ly(
       labels = race_labels,
-      values = race_values,
-      type = "pie"
+      values = race_percentages,
+      type = "pie",
+      domain = list(x = c(0.10, 0.90), y = c(0.10, 0.90)),
+      text = race_text,
+      textinfo = "text",
+      textposition = "outside",
+      hovertemplate = "%{label}<br>%{value:.1f}%<extra></extra>"
     ) %>%
-      layout(title = paste("Racial Composition of", input$selected_inst))
+      layout(
+        title = paste("Racial Composition of", input$selected_inst),
+        margin = list(l = 50, r = 50, t = 80, b = 160),
+        height = 600,
+        autosize = FALSE,
+        title = list(
+          x = 0.5,
+          xanchor = "center",
+          font = list(size = 14)
+        ),
+        legend = list(
+          x = 0.5,
+          y = -0.15,
+          xanchor = "center",
+          orientation = "h"
+        )
+      )
   })
   
-
   
   ## Feature: Filter College
   filtered_data <- eventReactive(input$show_result, {
