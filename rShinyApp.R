@@ -88,7 +88,12 @@ ui <- navbarPage("College Navigator", id = "navbar",
                             ),
                             
                             mainPanel(
-                              plotlyOutput("cluster_plot")
+                              plotlyOutput("cluster_plot"),
+                              hr(),
+                              uiOutput("cluster_school_header"),
+                              dataTableOutput("cluster_school_info"),
+                              br(),
+                              uiOutput("cluster_school_link")
                             )
                           )
                  ),
@@ -479,7 +484,8 @@ server <- function(input, output){
             color = ~Cluster,
             text = ~paste("School:", School,
                           "<br>Cluster:", Cluster),
-            hoverinfo = 'text') %>%
+            hoverinfo = 'text',
+            customdata = ~School) %>%
       layout(
         title = "Interactive K-means Cluster Plot (PCA)",
         xaxis = list(title = "Principal Component 1"),
@@ -493,6 +499,151 @@ server <- function(input, output){
           xref = 'paper', yref = 'paper'
         )
       )
+  })
+  
+  # Show dynamic header with school name
+  output$cluster_school_header <- renderUI({
+    event <- event_data("plotly_click")
+    if (is.null(event)) return(NULL)
+    
+    clicked_school <- event$customdata
+    if (is.null(clicked_school)) return(NULL)
+    
+    tags$h4(paste(clicked_school))
+  })
+  
+  # Show selected school info when user clicks a point in Feature 3
+  output$cluster_school_info <- renderDT({
+    event <- event_data("plotly_click")
+    df_pca <- filtered_data_3()
+    
+    # Explicitly depend on all filter inputs to ensure reactivity
+    enrollment_selected <- "1" %in% input$enrollment_filter
+    act_selected <- "1" %in% input$ACT_filter
+    admission_selected <- "1" %in% input$admission_filter
+    debt_selected <- "1" %in% input$debt_filter
+    
+    if (is.null(event) || !is.data.frame(df_pca) || nrow(df_pca) == 0) return(NULL)
+    
+    # Find the clicked school using customdata
+    clicked_school <- event$customdata
+    if (is.null(clicked_school)) return(NULL)
+    
+    clicked <- df_pca %>%
+      filter(INSTNM == clicked_school)
+    
+    if (nrow(clicked) == 0) {
+      showNotification("No matching school found for the selected point.", type = "error")
+      return(NULL)
+    }
+    
+    # Get additional info from feature2data for website and other details
+    school_info <- feature2data %>% filter(INSTNM == clicked$INSTNM[1])
+    
+    # Create detailed info table based on selected filters
+    info_data <- data.frame(
+      Metric = character(),
+      Value = character(),
+      stringsAsFactors = FALSE
+    )
+    
+    # Only show enrollment if user selected "Similar Enrollment Size"
+    if (enrollment_selected) {
+      # Get enrollment from original feature3data since it might be removed from filtered data
+      original_school_data <- feature3data %>% filter(INSTNM == clicked_school)
+      if (nrow(original_school_data) > 0 && !is.na(original_school_data$UGDS[1])) {
+        info_data <- rbind(info_data, data.frame(
+          Metric = "Enrollment",
+          Value = format(original_school_data$UGDS[1], big.mark = ","),
+          stringsAsFactors = FALSE
+        ))
+      }
+    }
+    
+    # Only show ACT median if user selected "Similar Test Score"
+    if (act_selected) {
+      # Get ACT median from original feature3data since it might be removed from filtered data
+      original_school_data <- feature3data %>% filter(INSTNM == clicked_school)
+      if (nrow(original_school_data) > 0 && !is.na(original_school_data$ACT_MEDIAN[1])) {
+        info_data <- rbind(info_data, data.frame(
+          Metric = "ACT Median",
+          Value = as.character(original_school_data$ACT_MEDIAN[1]),
+          stringsAsFactors = FALSE
+        ))
+      }
+    }
+    
+    # Only show admission rate if user selected "Similar Admission Rate"
+    if (admission_selected) {
+      # Get admission rate from original feature3data since it might be removed from filtered data
+      original_school_data <- feature3data %>% filter(INSTNM == clicked_school)
+      if (nrow(original_school_data) > 0 && !is.na(original_school_data$ADM_RATE[1])) {
+        info_data <- rbind(info_data, data.frame(
+          Metric = "Admission Rate",
+          Value = paste0(round(original_school_data$ADM_RATE[1] * 100, 1), "%"),
+          stringsAsFactors = FALSE
+        ))
+      }
+    }
+    
+    # Only show graduate debt if user selected "Similar Graduate Debt"
+    if (debt_selected) {
+      # Get graduate debt from original feature3data since it might be removed from filtered data
+      original_school_data <- feature3data %>% filter(INSTNM == clicked_school)
+      if (nrow(original_school_data) > 0 && !is.na(original_school_data$GRAD_DEBT_MDN[1])) {
+        info_data <- rbind(info_data, data.frame(
+          Metric = "Graduate Debt",
+          Value = paste0("$", format(original_school_data$GRAD_DEBT_MDN[1], big.mark = ",")),
+          stringsAsFactors = FALSE
+        ))
+      }
+    }
+    
+    # If no data to show, return message
+    if (nrow(info_data) == 0) {
+      return(datatable(data.frame(Message = "No data available for selected categories"), 
+                      options = list(dom = 't', searching = FALSE, lengthChange = FALSE)))
+    }
+    
+    datatable(info_data, 
+              options = list(
+                pageLength = 5,
+                dom = 't',
+                searching = FALSE,
+                lengthChange = FALSE
+              ),
+              rownames = FALSE,
+              colnames = c("Metric", "Value"))
+  })
+  
+  # Show clickable URL for Feature 3
+  output$cluster_school_link <- renderUI({
+    event <- event_data("plotly_click")
+    df_pca <- filtered_data_3()
+    
+    if (is.null(event) || !is.data.frame(df_pca) || nrow(df_pca) == 0) return(NULL)
+    
+    # Find the clicked school using customdata
+    clicked_school <- event$customdata
+    if (is.null(clicked_school)) return(NULL)
+    
+    clicked <- df_pca %>%
+      filter(INSTNM == clicked_school)
+    
+    if (nrow(clicked) == 0) return(NULL)
+    
+    # Get website from feature2data
+    school_info <- feature2data %>% filter(INSTNM == clicked$INSTNM[1])
+    
+    if (nrow(school_info) == 0 || is.na(school_info$INSTURL[1])) return(NULL)
+    
+    tags$a(
+      href = ifelse(grepl("^https?://", school_info$INSTURL[1]), 
+                    school_info$INSTURL[1], 
+                    paste0("https://", school_info$INSTURL[1])),
+      target = "_blank",
+      "Visit School Website"
+    )
   })
   
   observeEvent(input$go_to_race, {
