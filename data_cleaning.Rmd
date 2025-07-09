@@ -146,7 +146,7 @@ race_chart
 
 ## Filter Colleges
 
-The app will feature sliders for SAT average and admission rate (in ranges), along with filters for state and institution `CONTROL` type (Public = 1, Private = 2 or 3),  Locale (by rural & town, suburb & city) . Based on the user's selections, the app will return a list of colleges that meet the criteria in the form of a scatter plot with x-axis is the SAT average and y-axis is the Admission rate, where on hover the point, it shows the information, on click, user can click on the school website link. User will also have the option to tick whether they want to include criteria SAT, Admission rate. For Locale and IS_PUBLIC, they can also not tick any box or all boxes. The sliders for SAT and Admission rate would have a start and end pointer to show the range in which they want to filter for.
+The app will feature sliders for SAT average and admission rate (in ranges), along with filters for state and institution `CONTROL` type (Public = 1, Private = 2 or 3), Locale (by rural & town, suburb & city) . Based on the user's selections, the app will return a list of colleges that meet the criteria in the form of a scatter plot with x-axis is the SAT average and y-axis is the Admission rate, where on hover the point, it shows the information, on click, user can click on the school website link. User will also have the option to tick whether they want to include criteria SAT, Admission rate. For Locale and IS_PUBLIC, they can also not tick any box or all boxes. The sliders for SAT and Admission rate would have a start and end pointer to show the range in which they want to filter for.
 
 ```{r}
 # Data cleaning
@@ -280,3 +280,65 @@ plot_ly(pca_data,
 ```
 
 ![Interactive cluster scatter](./feat3.png)
+
+# College Comparison
+
+This feature allows users to select two institutions and compare them across key characteristics. Simply select any two institutions from the drop-down menu to see a side-by-side analysis of key characteristics, including gender demographics, average SAT scores, admissions rate, school type, and location. Users can customize the view to show or hide specific comparison categories to focus on factors that truly matter to them.
+
+```{r}
+# Load cleaned data
+feature1data <- readr::read_csv("cleaned_feature1data.csv") # Demographics
+feature2data <- readr::read_csv("cleaned_feature2data.csv") # Admissions, Institution Info
+
+college1 <- "Grinnell College"
+college2 <- "Carleton College"
+
+# Demographics
+college1_demo <- feature1data %>% filter(INSTNM == college1)
+college2_demo <- feature1data %>% filter(INSTNM == college2)
+
+# Admissions, Institution Info
+college1_adm <- feature2data %>% filter(INSTNM == college1)
+college2_adm <- feature2data %>% filter(INSTNM == college2)
+
+# School details comparison
+info_data <- data.frame(
+  Category = c("Location", "Institution Type"),
+  !!college1 := c(
+    ifelse(!is.na(college1_adm$IS_CITY[1]), ifelse(college1_adm$IS_CITY[1] == 1, "City/Suburb", "Rural/Town"), "N/A"),
+    ifelse(!is.na(college1_adm$IS_PUBLIC[1]), ifelse(college1_adm$IS_PUBLIC[1] == 1, "Public", "Private"), "N/A")
+  ),
+  !!college2 := c(
+    ifelse(!is.na(college2_adm$IS_CITY[1]), ifelse(college2_adm$IS_CITY[1] == 1, "City/Suburb", "Rural/Town"), "N/A"),
+    ifelse(!is.na(college2_adm$IS_PUBLIC[1]), ifelse(college2_adm$IS_PUBLIC[1] == 1, "Public", "Private"), "N/A")
+  )
+)
+print(info_data)
+
+# Summary table with all categories
+summary_table <- data.frame(
+  Metric = c(
+    "Men %", "Women %",
+    "Location", "Institution Type", "SAT Avg", "Admission Rate"
+  ),
+  !!college1 := c(
+    round(college1_demo$UGDS_MEN[1] * 100, 1),
+    round(college1_demo$UGDS_WOMEN[1] * 100, 1),
+    ifelse(!is.na(college1_adm$IS_CITY[1]), ifelse(college1_adm$IS_CITY[1] == 1, "City/Suburb", "Rural/Town"), "N/A"),
+    ifelse(!is.na(college1_adm$IS_PUBLIC[1]), ifelse(college1_adm$IS_PUBLIC[1] == 1, "Public", "Private"), "N/A"),
+    college1_adm$SAT_AVG[1],
+    paste0(round(college1_adm$ADM_RATE[1] * 100, 1), "%")
+  ),
+  !!college2 := c(
+    round(college2_demo$UGDS_MEN[1] * 100, 1),
+    round(college2_demo$UGDS_WOMEN[1] * 100, 1),
+    ifelse(!is.na(college2_adm$IS_CITY[1]), ifelse(college2_adm$IS_CITY[1] == 1, "City/Suburb", "Rural/Town"), "N/A"),
+    ifelse(!is.na(college2_adm$IS_PUBLIC[1]), ifelse(college2_adm$IS_PUBLIC[1] == 1, "Public", "Private"), "N/A"),
+    college2_adm$SAT_AVG[1],
+    paste0(round(college2_adm$ADM_RATE[1] * 100, 1), "%")
+  )
+)
+print(summary_table)
+```
+
+![Interactive table scatter](./feat4.png)

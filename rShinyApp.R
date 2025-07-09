@@ -35,7 +35,7 @@ ui <- navbarPage("College Navigator", id = "navbar",
                               ),
                               checkboxGroupInput("pub_filter", "Institution Type:",
                                                  choices = list("Public" = 1, "Private" = 0)),
-                              checkboxGroupInput("locale_filter", "Locale:",
+                              checkboxGroupInput("locale_filter", "Location:",
                                                  choices = list("Suburb/City" = 1, "Rural/Town" = 0)),
                               actionButton("show_result", "Show Result", class = "btn-success")
                             ),
@@ -50,9 +50,10 @@ ui <- navbarPage("College Navigator", id = "navbar",
                  tabPanel("Gender & Racial Composition by Institution",
                           sidebarLayout(position = "right",
                                         sidebarPanel(
-                                          selectInput("selected_inst", "Select Institution:",
+                                          selectizeInput("selected_inst", "Select Institution:",
                                                       choices = all_institutions,
-                                                      selected = "Grinnell College")
+                                                      selected = "Grinnell College",
+                                                      options = list(maxItems = 1))
                                         ),
                                         mainPanel(
                                           plotlyOutput('genderPie'),
@@ -65,8 +66,9 @@ ui <- navbarPage("College Navigator", id = "navbar",
                           sidebarLayout(
                             sidebarPanel(
                               #p("The number of colleges has been filtered to only include colleges that contain all data relevant to the clustering variables"),
-                              selectInput("selected_inst_2", "Select Institution",
-                                          choices = all_institutions),
+                              selectizeInput("selected_inst_2", "Select Institution",
+                                          choices = all_institutions,
+                                          options = list(maxItems = 1)),
                               
                               checkboxGroupInput("show_only_cluster", "Show Only Cluster of Selected Institution",
                                                  choices = list("Filter" = 1)),
@@ -87,6 +89,53 @@ ui <- navbarPage("College Navigator", id = "navbar",
                             
                             mainPanel(
                               plotlyOutput("cluster_plot")
+                            )
+                          )
+                 ),
+                 ## Feature 4
+                 tabPanel("College Comparison",
+                          sidebarLayout(
+                            sidebarPanel(
+                              h4("Select Two Colleges to Compare"),
+                              selectizeInput("college1", "First College:",
+                                          choices = all_institutions,
+                                          selected = "Grinnell College",
+                                          options = list(maxItems = 1)),
+                              selectizeInput("college2", "Second College:",
+                                          choices = all_institutions,
+                                          selected = "Carleton College",
+                                          options = list(maxItems = 1)),
+                              hr(),
+                              h4("Comparison Categories"),
+                              checkboxGroupInput("compare_categories", "Select categories to compare:",
+                                                 choices = list(
+                                                   "Demographics" = "demographics",
+                                                   "School Details" = "institution_info",
+                                                   "Admissions" = "admissions"
+                                                 ),
+                                                 selected = c("demographics", "institution_info", "admissions")),
+                              # actionButton("compare_colleges", "Compare Colleges", class = "btn-primary") # Removed actionButton
+                            ),
+                            mainPanel(
+                              conditionalPanel(
+                                condition = "input.compare_categories.length > 0", # Changed condition
+                                h3("College Comparison Results"),
+                                hr(),
+
+
+
+                                # Add new/merged comparison panels in mainPanel
+
+                                conditionalPanel(
+                                  condition = "'institution_info' in input.compare_categories",
+                                  h4("School Details Comparison"),
+                                  tableOutput("institution_info_comparison"),
+                                  hr()
+                                ),
+                                # Summary table
+                                h4("Summary Comparison Table"),
+                                dataTableOutput("comparison_table")
+                              )
                             )
                           )
                  )
@@ -451,7 +500,170 @@ server <- function(input, output){
     updateSelectInput(inputId = "selected_inst", selected = selected_college$name)
     updateTabsetPanel(session = getDefaultReactiveDomain(), inputId = "navbar", selected = "Gender & Racial Composition by Institution")
   })
-}
+  
+  ## Feature 4: College Comparison
+  # Get comparison data
+  comparison_data <- reactive({
+    college1_data <- list()
+    college2_data <- list()
+    
+    # Get demographics data
+    if ("demographics" %in% input$compare_categories) {
+      college1_demo <- feature1data %>% filter(INSTNM == input$college1)
+      college2_demo <- feature1data %>% filter(INSTNM == input$college2)
+      
+      if (nrow(college1_demo) > 0) {
+        college1_data$demographics <- college1_demo
+      }
+      if (nrow(college2_demo) > 0) {
+        college2_data$demographics <- college2_demo
+      }
+    }
+    
+    # Get admissions data
+    if ("admissions" %in% input$compare_categories) {
+      college1_admissions <- feature2data %>% filter(INSTNM == input$college1)
+      college2_admissions <- feature2data %>% filter(INSTNM == input$college2)
+      
+      if (nrow(college1_admissions) > 0) {
+        college1_data$admissions <- college1_admissions
+      }
+      if (nrow(college2_admissions) > 0) {
+        college2_data$admissions <- college2_admissions
+      }
+    }
+    
+    # Get institution info data (same source as admissions but loaded independently)
+    if ("institution_info" %in% input$compare_categories) {
+      college1_info <- feature2data %>% filter(INSTNM == input$college1)
+      college2_info <- feature2data %>% filter(INSTNM == input$college2)
+      
+      if (nrow(college1_info) > 0) {
+        college1_data$institution_info <- college1_info
+      }
+      if (nrow(college2_info) > 0) {
+        college2_data$institution_info <- college2_info
+      }
+    }
+    
+    list(college1 = college1_data, college2 = college2_data)
+  })
 
+  # Helper function for institution info
+  get_institution_info <- function(college_data) {
+    info <- college_data$institution_info
+    if (is.null(info)) {
+      info <- college_data$admissions
+    }
+    if (is.null(info)) return(c("N/A", "N/A"))
+    
+    locale <- ifelse(!is.null(info$IS_CITY[1]), 
+                     ifelse(info$IS_CITY[1] == 1, "City/Suburb", "Rural/Town"), "N/A")
+    type <- ifelse(!is.null(info$IS_PUBLIC[1]), 
+                   ifelse(info$IS_PUBLIC[1] == 1, "Public", "Private"), "N/A")
+    return(c(locale, type))
+  }
+  
+  output$institution_info_comparison <- renderTable({
+    data <- comparison_data()
+    if ((is.null(data$college1$institution_info) && is.null(data$college1$admissions)) || 
+        (is.null(data$college2$institution_info) && is.null(data$college2$admissions))) {
+      return(data.frame(Message = "No institution info available for comparison"))
+    }
+    
+    college1_info <- get_institution_info(data$college1)
+    college2_info <- get_institution_info(data$college2)
+    
+    info_table <- data.frame(
+      Category = c("Location", "Institution Type"),
+      !!input$college1 := college1_info,
+      !!input$college2 := college2_info
+    )
+    info_table
+  })
+  
+  # Summary comparison table
+  output$comparison_table <- renderDT({
+    data <- comparison_data()
+    
+    if (length(data$college1) == 0 && length(data$college2) == 0) {
+      return(datatable(data.frame(Message = "No data available for selected colleges")))
+    }
+    
+    # Create summary table
+    summary_data <- data.frame(
+      Metric = character(),
+      College1 = character(),
+      College2 = character(),
+      stringsAsFactors = FALSE
+    )
+    
+    # Add demographics data
+    if ("demographics" %in% input$compare_categories && 
+        !is.null(data$college1$demographics) && !is.null(data$college2$demographics)) {
+      demo1 <- data$college1$demographics
+      demo2 <- data$college2$demographics
+      
+      summary_data <- rbind(summary_data, data.frame(
+        Metric = c("Men %", "Women %"),
+        College1 = c(
+          round(as.numeric(demo1$UGDS_MEN[1]) * 100, 1),
+          round(as.numeric(demo1$UGDS_WOMEN[1]) * 100, 1)
+        ),
+        College2 = c(
+          round(as.numeric(demo2$UGDS_MEN[1]) * 100, 1),
+          round(as.numeric(demo2$UGDS_WOMEN[1]) * 100, 1)
+        ),
+        stringsAsFactors = FALSE
+      ))
+    }
+    
+    # Add admissions data
+    if ("admissions" %in% input$compare_categories && 
+        !is.null(data$college1$admissions) && !is.null(data$college2$admissions)) {
+      adm1 <- data$college1$admissions
+      adm2 <- data$college2$admissions
+      
+      summary_data <- rbind(summary_data, data.frame(
+        Metric = c("Average SAT Score", "Admission Rate"),
+        College1 = c(
+          as.numeric(adm1$SAT_AVG[1]),
+          paste0(round(as.numeric(adm1$ADM_RATE[1]) * 100, 1), "%")
+        ),
+        College2 = c(
+          as.numeric(adm2$SAT_AVG[1]),
+          paste0(round(as.numeric(adm2$ADM_RATE[1]) * 100, 1), "%")
+        ),
+        stringsAsFactors = FALSE
+      ))
+    }
+
+    if ("institution_info" %in% input$compare_categories && 
+        ((!is.null(data$college1$institution_info) || !is.null(data$college1$admissions)) && 
+         (!is.null(data$college2$institution_info) || !is.null(data$college2$admissions)))) {
+      college1_info <- get_institution_info(data$college1)
+      college2_info <- get_institution_info(data$college2)
+      summary_data <- rbind(summary_data, data.frame(
+        Metric = c("Location", "Institution Type"),
+        College1 = college1_info,
+        College2 = college2_info,
+        stringsAsFactors = FALSE
+      ))
+    }
+    
+    # Clean up NA values
+    summary_data[is.na(summary_data)] <- "N/A"
+    
+    datatable(summary_data, 
+              options = list(
+                pageLength = 10,
+                dom = 't',
+                searching = FALSE,
+                lengthChange = FALSE
+              ),
+              rownames = FALSE,
+              colnames = c("Metric", input$college1, input$college2))
+  })
+}
 
 shinyApp(ui, server)
