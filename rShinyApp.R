@@ -3,7 +3,7 @@ library(tidyverse)
 library(plotly)
 library(DT)
 
-# Read data
+# Read data files
 feature1data <- read.csv("cleaned_feature1data.csv")
 feature2data <- read.csv("cleaned_feature2data.csv")
 feature3data <- read.csv("cleaned_feature3data.csv")
@@ -16,13 +16,10 @@ all_institutions <- sort(unique(c(
   feature3data$INSTNM
 )))
 
+# Define UI
 ui <- navbarPage("College Navigator", id = "navbar",
-                 ## Feature 1: College Finder
-                 # Interactive scatter plot allowing users to filter colleges by SAT average, admission rate, 
-                 # institution type (Public/Private), and location (City/Suburb vs Rural/Town). Users can 
-                 # click on points to select up to 2 schools for comparison, view their details, and 
-                 # access demographic information. A "Compare the Two Colleges" button appears when 2 
-                 # schools are selected, allowing seamless navigation to the comparison feature.
+                 
+                 # Feature 1: College Finder
                  tabPanel("College Finder",
                           sidebarLayout(
                             sidebarPanel(
@@ -49,13 +46,8 @@ ui <- navbarPage("College Navigator", id = "navbar",
                             )
                           )
                  ),
-                 ## Feature 2: Compare Colleges
-                 # Side-by-side comparison tool allowing users to select two institutions and compare them 
-                 # across academic profile (SAT Average, Admission Rate, 4-Year Graduation Rate), student 
-                 # body (Undergraduate Enrollment, Pell Grant Recipients), and institution details (Location, 
-                 # Institution Type, Average Cost of Attendance). Users can customize which categories to 
-                 # display and access website links for each school. "View Demographics" buttons at the 
-                 # bottom allow quick navigation to gender and racial composition pie charts for each institution.
+                 
+                 # Feature 2: Compare Colleges
                  tabPanel("Compare Colleges",
                           sidebarLayout(
                             sidebarPanel(
@@ -82,24 +74,23 @@ ui <- navbarPage("College Navigator", id = "navbar",
                             ),
                             mainPanel(
                               conditionalPanel(
-                                condition = "input.compare_categories.length > 0", # Changed condition
+                                condition = "input.compare_categories.length > 0",
                                 h3("College Comparison Results"),
                                 hr(),
-
                                 conditionalPanel(
                                   condition = "'institution_details' in input.compare_categories",
                                   h4("Institution Details Comparison"),
                                   tableOutput("institution_info_comparison"),
                                   hr()
                                 ),
-                                # Summary table
                                 h4("Summary Comparison Table"),
                                 dataTableOutput("comparison_table")
                               )
                             )
                           )
                  ),
-                 ## Feature 3
+                 
+                 # Feature 3: Gender and Racial Composition
                  tabPanel("Gender and Racial Composition",
                           fluidRow(
                             column(12,
@@ -115,19 +106,17 @@ ui <- navbarPage("College Navigator", id = "navbar",
                             column(6, plotlyOutput('racePie', height = "600px"))
                           )
                  ),
-                 ## Feature 4
+                 
+                 # Feature 4: Find Similar Colleges
                  tabPanel("Find Similar Colleges",
                           sidebarLayout(
                             sidebarPanel(
-                              #p("The number of colleges has been filtered to only include colleges that contain all data relevant to the clustering variables"),
                               selectizeInput("selected_inst_2", "Select Institution",
                                           choices = all_institutions,
                                           options = list(maxItems = 1),
                                           width = "100%"),
-                              
                               checkboxGroupInput("show_only_cluster", "Show Only Cluster of Selected Institution",
                                                  choices = list("Filter" = 1)),
-                              
                               checkboxGroupInput("enrollment_filter", "Similar Enrollment Size",
                                                  choices = list("Include" = 1)),
                               checkboxGroupInput("ACT_filter", "Similar Test Score",
@@ -136,12 +125,9 @@ ui <- navbarPage("College Navigator", id = "navbar",
                                                  choices = list("Include" = 1)),
                               checkboxGroupInput("debt_filter", "Similar Graduate Debt",
                                                  choices = list("Include" = 1)),
-                              
                               numericInput("n_clusters", "Number of Clusters (Specificity of Similarity)", value = 5, min = 2, max = 20),
-                              
                               actionButton("show_result_3", "Show Similar Colleges")
                             ),
-                            
                             mainPanel(
                               plotlyOutput("cluster_plot"),
                               hr(),
@@ -154,8 +140,10 @@ ui <- navbarPage("College Navigator", id = "navbar",
                  )
 )
 
-## Set up the server function
+# Server Logic
 server <- function(input, output){
+  
+  # Reactive values
   selected_college <- reactiveValues(name = NULL)
   selected_schools <- reactiveValues(schools = list())
   
@@ -224,26 +212,21 @@ server <- function(input, output){
       )
   }
   
-  ## Feature: Gender Composition
-  output$genderPie <- renderPlotly({
-    selected_data <- feature1data %>% filter(INSTNM == input$selected_inst)
-    gender_labels <- c("Men", "Women")
-    gender_columns <- c("UGDS_MEN", "UGDS_WOMEN")
-    create_pie_chart(selected_data, gender_labels, gender_columns, "Gender Composition", input$selected_inst)
-  })
+  # Helper function to add rows to summary data
+  add_summary_row <- function(summary_data, metric, college1_val, college2_val) {
+    rbind(summary_data, data.frame(
+      Metric = metric,
+      College1 = college1_val,
+      College2 = college2_val,
+      stringsAsFactors = FALSE
+    ))
+  }
   
-  ## Feature: Racial Composition
-  output$racePie <- renderPlotly({
-    selected_data <- feature1data %>% filter(INSTNM == input$selected_inst)
-    race_labels <- c("White", "Black", "Hispanic", "Asian", "American Indian/Alaska Native", "Native Hawaiian/Pacific Islander",
-                     "Two or More", "Non-Resident Alien", "Unknown")
-    race_columns <- c("UGDS_WHITE", "UGDS_BLACK", "UGDS_HISP", "UGDS_ASIAN",
-                      "UGDS_AIAN", "UGDS_NHPI", "UGDS_2MOR", "UGDS_NRA", "UGDS_UNKN")
-    create_pie_chart(selected_data, race_labels, race_columns, "Racial Composition", input$selected_inst, -0.15)
-  })
+  # =============================================================================
+  # Feature 1: College Finder
+  # =============================================================================
   
-  
-  ## Feature: Filter College
+  # Filter data based on user selections
   filtered_data <- eventReactive(input$show_result, {
     df <- feature2data
     
@@ -271,6 +254,7 @@ server <- function(input, output){
     return(df)
   })
   
+  # Render scatter plot
   output$college_plot <- renderPlotly({
     df <- filtered_data()
     
@@ -304,7 +288,7 @@ server <- function(input, output){
         xaxis = list(title = "Average SAT Score"),
         yaxis = list(title = "Admission Rate"),
         annotations = list(
-          x = 0.5, y = 1,  # Positioning the subtitle
+          x = 0.5, y = 1,
           text = "Hover over and click on points to select up to 2 schools for comparison.",
           showarrow = FALSE,
           font = list(size = 14),
@@ -314,7 +298,7 @@ server <- function(input, output){
       )
   })
   
-  # Show selected school info when user clicks a point
+  # Show selected school info
   output$school_info <- renderDT({
     event <- event_data("plotly_click")
     df <- filtered_data()
@@ -369,17 +353,60 @@ server <- function(input, output){
       select(School = INSTNM, SAT_Avg = SAT_AVG, Admission_Rate = ADM_RATE, Demographics = ViewDemographics)
     
     datatable(all_schools_data, escape = FALSE, options = list(
-      pageLength = 10,     # Increased for multiple schools
-      dom = 't',           # Only show the table (remove search and entries)
-      searching = FALSE,   # Disable the search bar
-      lengthChange = FALSE # Remove the "Show entries" dropdown
+      pageLength = 10,
+      dom = 't',
+      searching = FALSE,
+      lengthChange = FALSE
     ))
   })
   
-
+  # Render compare button when 2 schools are selected
+  output$compare_button <- renderUI({
+    if (length(selected_schools$schools) == 2) {
+      tags$div(
+        style = "margin-top: 20px; text-align: center;",
+        actionButton("go_to_compare", "Compare the Two Colleges", 
+                   class = "btn-primary btn-sm")
+      )
+    }
+  })
   
-
-  ## Feature: Find Similar Colleges
+  # Handle compare button click
+  observeEvent(input$go_to_compare, {
+    if (length(selected_schools$schools) == 2) {
+      updateSelectInput(inputId = "college1", selected = selected_schools$schools[1])
+      updateSelectInput(inputId = "college2", selected = selected_schools$schools[2])
+      updateTabsetPanel(session = getDefaultReactiveDomain(), inputId = "navbar", selected = "Compare Colleges")
+    }
+  })
+  
+  # =============================================================================
+  # Feature 2: Gender and Racial Composition
+  # =============================================================================
+  
+  # Gender composition pie chart
+  output$genderPie <- renderPlotly({
+    selected_data <- feature1data %>% filter(INSTNM == input$selected_inst)
+    gender_labels <- c("Men", "Women")
+    gender_columns <- c("UGDS_MEN", "UGDS_WOMEN")
+    create_pie_chart(selected_data, gender_labels, gender_columns, "Gender Composition", input$selected_inst)
+  })
+  
+  # Racial composition pie chart
+  output$racePie <- renderPlotly({
+    selected_data <- feature1data %>% filter(INSTNM == input$selected_inst)
+    race_labels <- c("White", "Black", "Hispanic", "Asian", "American Indian/Alaska Native", "Native Hawaiian/Pacific Islander",
+                     "Two or More", "Non-Resident Alien", "Unknown")
+    race_columns <- c("UGDS_WHITE", "UGDS_BLACK", "UGDS_HISP", "UGDS_ASIAN",
+                      "UGDS_AIAN", "UGDS_NHPI", "UGDS_2MOR", "UGDS_NRA", "UGDS_UNKN")
+    create_pie_chart(selected_data, race_labels, race_columns, "Racial Composition", input$selected_inst, -0.15)
+  })
+  
+  # =============================================================================
+  # Feature 3: Find Similar Colleges
+  # =============================================================================
+  
+  # Filter data for clustering
   filtered_data_3 <- eventReactive(input$show_result_3, {
     df_pca <- feature3data
     
@@ -399,6 +426,7 @@ server <- function(input, output){
     return(df_pca)
   })
   
+  # Render cluster plot
   output$cluster_plot <- renderPlotly({
     df_pca <- filtered_data_3()
     
@@ -422,6 +450,7 @@ server <- function(input, output){
       showNotification("Too few schools to form this many clusters. Please reduce the number of clusters.", type = "error")
       return(NULL)
     }
+    
     kmeans_result <- tryCatch({
       kmeans(features_scaled, centers = k, nstart = 25)
     }, error = function(e) {
@@ -429,7 +458,6 @@ server <- function(input, output){
       return(NULL)
     })
     if (is.null(kmeans_result)) return(NULL)
-    
     
     pca <- tryCatch({
       prcomp(features_scaled)
@@ -449,7 +477,7 @@ server <- function(input, output){
     pca_data$School <- school_names
     pca_data$Cluster <- as.factor(kmeans_result$cluster)
     
-    # Show only the cluster of the school you want to find similar schools for
+    # Show only the cluster of the selected school
     if ("1" %in% input$show_only_cluster) {
       selected_school <- input$selected_inst_2
       
@@ -462,15 +490,13 @@ server <- function(input, output){
       pca_data <- pca_data[pca_data$Cluster == selected_cluster, ]
     }
     
-    
     plot_ly(pca_data,
             x = ~PC1,
             y = ~PC2,
             type = 'scatter',
             mode = 'markers',
             color = ~Cluster,
-            text = ~paste("School:", School,
-                          "<br>Cluster:", Cluster),
+            text = ~paste("School:", School, "<br>Cluster:", Cluster),
             hoverinfo = 'text',
             customdata = ~School) %>%
       layout(
@@ -499,12 +525,11 @@ server <- function(input, output){
     tags$h4(paste(clicked_school))
   })
   
-  # Show selected school info when user clicks a point in Feature 3
+  # Show selected school info
   output$cluster_school_info <- renderDT({
     event <- event_data("plotly_click")
     df_pca <- filtered_data_3()
     
-    # Explicitly depend on all filter inputs to ensure reactivity
     enrollment_selected <- "1" %in% input$enrollment_filter
     act_selected <- "1" %in% input$ACT_filter
     admission_selected <- "1" %in% input$admission_filter
@@ -512,20 +537,15 @@ server <- function(input, output){
     
     if (is.null(event) || !is.data.frame(df_pca) || nrow(df_pca) == 0) return(NULL)
     
-    # Find the clicked school using customdata
     clicked_school <- event$customdata
     if (is.null(clicked_school)) return(NULL)
     
-    clicked <- df_pca %>%
-      filter(INSTNM == clicked_school)
+    clicked <- df_pca %>% filter(INSTNM == clicked_school)
     
     if (nrow(clicked) == 0) {
       showNotification("No matching school found for the selected point.", type = "error")
       return(NULL)
     }
-    
-    # Get additional info from feature2data for website and other details
-    school_info <- feature2data %>% filter(INSTNM == clicked$INSTNM[1])
     
     # Create detailed info table based on selected filters
     info_data <- data.frame(
@@ -533,58 +553,6 @@ server <- function(input, output){
       Value = character(),
       stringsAsFactors = FALSE
     )
-    
-    # Only show enrollment if user selected "Similar Enrollment Size"
-    if (enrollment_selected) {
-      # Get enrollment from original feature3data since it might be removed from filtered data
-      original_school_data <- feature3data %>% filter(INSTNM == clicked_school)
-      if (nrow(original_school_data) > 0 && !is.na(original_school_data$UGDS[1])) {
-        info_data <- rbind(info_data, data.frame(
-          Metric = "Enrollment",
-          Value = format(original_school_data$UGDS[1], big.mark = ","),
-          stringsAsFactors = FALSE
-        ))
-      }
-    }
-    
-    # Only show ACT median if user selected "Similar Test Score"
-    if (act_selected) {
-      # Get ACT median from original feature3data since it might be removed from filtered data
-      original_school_data <- feature3data %>% filter(INSTNM == clicked_school)
-      if (nrow(original_school_data) > 0 && !is.na(original_school_data$ACT_MEDIAN[1])) {
-        info_data <- rbind(info_data, data.frame(
-          Metric = "ACT Median",
-          Value = as.character(original_school_data$ACT_MEDIAN[1]),
-          stringsAsFactors = FALSE
-        ))
-      }
-    }
-    
-    # Only show admission rate if user selected "Similar Admission Rate"
-    if (admission_selected) {
-      # Get admission rate from original feature3data since it might be removed from filtered data
-      original_school_data <- feature3data %>% filter(INSTNM == clicked_school)
-      if (nrow(original_school_data) > 0 && !is.na(original_school_data$ADM_RATE[1])) {
-        info_data <- rbind(info_data, data.frame(
-          Metric = "Admission Rate",
-          Value = paste0(round(original_school_data$ADM_RATE[1] * 100, 1), "%"),
-          stringsAsFactors = FALSE
-        ))
-      }
-    }
-    
-    # Only show graduate debt if user selected "Similar Graduate Debt"
-    if (debt_selected) {
-      # Get graduate debt from original feature3data since it might be removed from filtered data
-      original_school_data <- feature3data %>% filter(INSTNM == clicked_school)
-      if (nrow(original_school_data) > 0 && !is.na(original_school_data$GRAD_DEBT_MDN[1])) {
-        info_data <- rbind(info_data, data.frame(
-          Metric = "Graduate Debt",
-          Value = paste0("$", format(original_school_data$GRAD_DEBT_MDN[1], big.mark = ",")),
-          stringsAsFactors = FALSE
-        ))
-      }
-    }
     
     # If no data to show, return message
     if (nrow(info_data) == 0) {
@@ -603,75 +571,10 @@ server <- function(input, output){
               colnames = c("Metric", "Value"))
   })
   
-  # Show clickable URL for Feature 3
-  output$cluster_school_link <- renderUI({
-    event <- event_data("plotly_click")
-    df_pca <- filtered_data_3()
-    
-    if (is.null(event) || !is.data.frame(df_pca) || nrow(df_pca) == 0) return(NULL)
-    
-    # Find the clicked school using customdata
-    clicked_school <- event$customdata
-    if (is.null(clicked_school)) return(NULL)
-    
-    clicked <- df_pca %>%
-      filter(INSTNM == clicked_school)
-    
-    if (nrow(clicked) == 0) return(NULL)
-    
-    # Get website from feature2data
-    school_info <- feature2data %>% filter(INSTNM == clicked$INSTNM[1])
-    
-    if (nrow(school_info) == 0 || is.na(school_info$INSTURL[1])) return(NULL)
-    
-    tags$a(
-      href = ifelse(grepl("^https?://", school_info$INSTURL[1]), 
-                    school_info$INSTURL[1], 
-                    paste0("https://", school_info$INSTURL[1])),
-      target = "_blank",
-      "Visit School Website"
-    )
-  })
+  # =============================================================================
+  # Feature 4: Compare Colleges
+  # =============================================================================
   
-  observeEvent(input$go_to_race, {
-    selected_college$name <- input$go_to_race
-    updateSelectInput(inputId = "selected_inst", selected = selected_college$name)
-    updateTabsetPanel(session = getDefaultReactiveDomain(), inputId = "navbar", selected = "Gender and Racial Composition")
-  })
-  
-  # Handle demographics button from comparison table
-  observeEvent(input$go_to_race_from_compare, {
-    selected_college$name <- input$go_to_race_from_compare
-    updateSelectInput(inputId = "selected_inst", selected = selected_college$name)
-    updateTabsetPanel(session = getDefaultReactiveDomain(), inputId = "navbar", selected = "Gender and Racial Composition")
-  })
-  
-  # Render compare button when 2 schools are selected
-  output$compare_button <- renderUI({
-    if (length(selected_schools$schools) == 2) {
-      tags$div(
-        style = "margin-top: 20px; text-align: center;",
-        actionButton("go_to_compare", "Compare the Two Colleges", 
-                   class = "btn-primary btn-sm")
-      )
-    }
-  })
-  
-  # Handle compare button click
-  observeEvent(input$go_to_compare, {
-    if (length(selected_schools$schools) == 2) {
-      # Set the two colleges in the Compare Colleges feature
-      updateSelectInput(inputId = "college1", selected = selected_schools$schools[1])
-      updateSelectInput(inputId = "college2", selected = selected_schools$schools[2])
-      # Navigate to Compare Colleges tab
-      updateTabsetPanel(session = getDefaultReactiveDomain(), inputId = "navbar", selected = "Compare Colleges")
-    }
-  })
-  
-
-  
-  ## Feature 4: College Comparison
-  # Get comparison data
   comparison_data <- reactive({
     college1_data <- list()
     college2_data <- list()
@@ -681,7 +584,7 @@ server <- function(input, output){
       data_source %>% filter(INSTNM == college_name)
     }
     
-    # Get student body data (demographics)
+    # Get demographics
     if ("student_body" %in% input$compare_categories) {
       college1_demo <- load_college_data(input$college1, feature1data)
       college2_demo <- load_college_data(input$college2, feature1data)
@@ -720,7 +623,7 @@ server <- function(input, output){
     
     list(college1 = college1_data, college2 = college2_data)
   })
-
+  
   # Helper functions for comparison
   get_institution_info <- function(college_data) {
     info <- college_data$institution_info
@@ -736,16 +639,7 @@ server <- function(input, output){
     return(c(locale, type))
   }
   
-  # Helper function to add rows to summary data
-  add_summary_row <- function(summary_data, metric, college1_val, college2_val) {
-    rbind(summary_data, data.frame(
-      Metric = metric,
-      College1 = college1_val,
-      College2 = college2_val,
-      stringsAsFactors = FALSE
-    ))
-  }
-  
+  # Institution info comparison table
   output$institution_info_comparison <- renderTable({
     data <- comparison_data()
     if ((is.null(data$college1$institution_info) && is.null(data$college1$admissions)) || 
@@ -780,15 +674,12 @@ server <- function(input, output){
       stringsAsFactors = FALSE
     )
     
-
-    
     # Add student body data
     if ("student_body" %in% input$compare_categories && 
         !is.null(data$college1$student_body) && !is.null(data$college2$student_body)) {
       demo1 <- data$college1$student_body
       demo2 <- data$college2$student_body
       
-      # Add UGDS data to Student Body section
       if (!is.null(data$college1$ugds) && !is.null(data$college2$ugds)) {
         ugds1 <- data$college1$ugds
         ugds2 <- data$college2$ugds
@@ -799,7 +690,6 @@ server <- function(input, output){
         )
       }
       
-      # Add PCTPELL data to Student Body section
       if (!is.null(data$college1$ugds) && !is.null(data$college2$ugds)) {
         pctpell1 <- data$college1$ugds
         pctpell2 <- data$college2$ugds
@@ -837,7 +727,8 @@ server <- function(input, output){
         )
       }
     }
-
+    
+    # Add institution details
     if ("institution_details" %in% input$compare_categories && 
         ((!is.null(data$college1$institution_details) || !is.null(data$college1$academic_profile)) && 
          (!is.null(data$college2$institution_details) || !is.null(data$college2$academic_profile)))) {
@@ -847,14 +738,11 @@ server <- function(input, output){
       summary_data <- add_summary_row(summary_data, "Location", college1_info[1], college2_info[1])
       summary_data <- add_summary_row(summary_data, "Institution Type", college1_info[2], college2_info[2])
       
-
-      
       # Add cost of attendance to Institution Details section
       if (!is.null(data$college1$additional) && !is.null(data$college2$additional)) {
         add1 <- data$college1$additional
         add2 <- data$college2$additional
         
-        # Add cost of attendance
         summary_data <- add_summary_row(summary_data, "Average Cost of Attendance",
           ifelse(is.na(add1$COSTT4_A[1]), "N/A", paste0("$", format(as.numeric(add1$COSTT4_A[1]), big.mark = ","))),
           ifelse(is.na(add2$COSTT4_A[1]), "N/A", paste0("$", format(as.numeric(add2$COSTT4_A[1]), big.mark = ",")))
@@ -862,12 +750,11 @@ server <- function(input, output){
       }
     }
     
-    # Add website links at the end (always show if data is available)
+    # Add website links at the end 
     if (!is.null(data$college1$additional) && !is.null(data$college2$additional)) {
       add1 <- data$college1$additional
       add2 <- data$college2$additional
       
-      # Format URLs properly (add https:// if not present)
       url1 <- ifelse(is.na(add1$INSTURL[1]), "N/A", 
                     ifelse(grepl("^https?://", add1$INSTURL[1]), add1$INSTURL[1], paste0("https://", add1$INSTURL[1])))
       url2 <- ifelse(is.na(add2$INSTURL[1]), "N/A", 
@@ -879,7 +766,7 @@ server <- function(input, output){
       )
     }
     
-    # Add View Demographics buttons (always show at the bottom)
+    # Add View Demographics buttons 
     summary_data <- add_summary_row(summary_data, "View Demographics",
       paste0('<button class="btn btn-primary btn-sm action-button" id="view_', 
              input$college1, 
@@ -892,10 +779,6 @@ server <- function(input, output){
              input$college2, 
              '\', {priority: \'event\'})">View Gender & Racial Composition</button>')
     )
-    
-
-    
-
     
     # Clean up NA values
     summary_data[is.na(summary_data)] <- "N/A"
@@ -911,6 +794,23 @@ server <- function(input, output){
               colnames = c("Metric", input$college1, input$college2),
               escape = FALSE)
   })
+  
+  # Event Handling
+  
+  # Handle demographics button from College Finder
+  observeEvent(input$go_to_race, {
+    selected_college$name <- input$go_to_race
+    updateSelectInput(inputId = "selected_inst", selected = selected_college$name)
+    updateTabsetPanel(session = getDefaultReactiveDomain(), inputId = "navbar", selected = "Gender and Racial Composition")
+  })
+  
+  # Handle demographics button from comparison table
+  observeEvent(input$go_to_race_from_compare, {
+    selected_college$name <- input$go_to_race_from_compare
+    updateSelectInput(inputId = "selected_inst", selected = selected_college$name)
+    updateTabsetPanel(session = getDefaultReactiveDomain(), inputId = "navbar", selected = "Gender and Racial Composition")
+  })
 }
 
+# Launch
 shinyApp(ui, server)
