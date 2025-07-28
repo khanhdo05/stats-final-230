@@ -18,7 +18,7 @@ Joyce Gill, Khanh Do, Matthew Billings-Chiu
 
 ## Deployed App
 
-https://khanhdo05.shinyapps.io/stats-final-230/
+https://khanhdo05.shinyapps.io/college-navigator/
 
 ## Data
 
