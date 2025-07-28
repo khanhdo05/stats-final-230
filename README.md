@@ -1,4 +1,4 @@
-![Deploy to ShinyApps](https://github.com/yourusername/stats-final-230/actions/workflows/deploy.yml/badge.svg)
+![Deploy to ShinyApps](https://github.com/khanhdo05/stats-final-230/actions/workflows/deploy.yml/badge.svg)
 
 # College Navigator: Exploring U.S. Colleges with R Shiny
 
