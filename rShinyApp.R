@@ -17,7 +17,12 @@ all_institutions <- sort(unique(c(
 )))
 
 ui <- navbarPage("College Navigator", id = "navbar",
-                 ## Feature 1
+                 ## Feature 1: College Finder
+                 # Interactive scatter plot allowing users to filter colleges by SAT average, admission rate, 
+                 # institution type (Public/Private), and location (City/Suburb vs Rural/Town). Users can 
+                 # click on points to select up to 2 schools for comparison, view their details, and 
+                 # access demographic information. A "Compare the Two Colleges" button appears when 2 
+                 # schools are selected, allowing seamless navigation to the comparison feature.
                  tabPanel("College Finder",
                           sidebarLayout(
                             sidebarPanel(
@@ -44,7 +49,13 @@ ui <- navbarPage("College Navigator", id = "navbar",
                             )
                           )
                  ),
-                 ## Feature 2
+                 ## Feature 2: Compare Colleges
+                 # Side-by-side comparison tool allowing users to select two institutions and compare them 
+                 # across academic profile (SAT Average, Admission Rate, 4-Year Graduation Rate), student 
+                 # body (Undergraduate Enrollment, Pell Grant Recipients), and institution details (Location, 
+                 # Institution Type, Average Cost of Attendance). Users can customize which categories to 
+                 # display and access website links for each school. "View Demographics" buttons at the 
+                 # bottom allow quick navigation to gender and racial composition pie charts for each institution.
                  tabPanel("Compare Colleges",
                           sidebarLayout(
                             sidebarPanel(
