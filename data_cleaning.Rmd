@@ -11,19 +11,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r echo = F, include = F}
-library(dplyr)
-library(ggplot2)
-library(shiny)
 library(tidyverse)
-library(tidyr)
 library(plotly)
-library(DT)
 library(cluster)
 library(psych)
 library(factoextra)
 library(corrplot)
-library(tibble)
-library(tinytex)
 ```
 
 # Introduction
@@ -45,44 +38,42 @@ We are using one source of csv for the r shiny app for all features so that we d
 
 ```{r}
 print(nrow(data))
-cleaned_data <- data %>%
-  # Calculate ACT Median
-  mutate(ACT_MEDIAN = ACTWRMID + ACTMTMID) %>%
-  mutate(GRAD_DEBT_MDN = na_if(GRAD_DEBT_MDN, "PrivacySuppressed")) %>%
-  mutate(GRAD_DEBT_MDN = as.numeric(GRAD_DEBT_MDN)) %>%
-  
-  # Select only relevant columns
-  dplyr::select(
-    INSTNM, INSTURL, CONTROL, SAT_AVG, ADM_RATE, LOCALE, ACT_MEDIAN, GRAD_DEBT_MDN, UGDS,
-    UGDS_WHITE, UGDS_BLACK, UGDS_HISP, UGDS_ASIAN, UGDS_AIAN, UGDS_NHPI, UGDS_2MOR, UGDS_NRA, UGDS_UNKN
+
+# Helper function for creating binary variables
+create_binary_vars <- function(df) {
+  df %>%
+    mutate(
+      IS_PUBLIC = case_when(
+        CONTROL == 1 ~ 1,
+        CONTROL %in% c(2, 3) ~ 0,
+        TRUE ~ NA_real_
+      ),
+      IS_CITY = case_when(
+        LOCALE >= 11 & LOCALE <= 23 ~ 1,
+        LOCALE >= 31 & LOCALE <= 43 ~ 0,
+        TRUE ~ NA_real_
+      )
     ) %>%
-  
-  # Drop rows that have NA values for all SAT_AVG, ADM_RATE, and LOCALE
+    select(-CONTROL, -LOCALE)
+}
+
+# Main cleaned data
+cleaned_data <- data %>%
+  mutate(
+    ACT_MEDIAN = ACTWRMID + ACTMTMID,
+    GRAD_DEBT_MDN = as.numeric(na_if(GRAD_DEBT_MDN, "PrivacySuppressed"))
+  ) %>%
+  select(
+    INSTNM, INSTURL, CONTROL, SAT_AVG, ADM_RATE, LOCALE, ACT_MEDIAN, GRAD_DEBT_MDN, UGDS, PCTPELL,
+    UGDS_WHITE, UGDS_BLACK, UGDS_HISP, UGDS_ASIAN, UGDS_AIAN, UGDS_NHPI, UGDS_2MOR, UGDS_NRA, UGDS_UNKN,
+    C200_4, COSTT4_A, CITY, STABBR
+  ) %>%
   filter(!(is.na(SAT_AVG) & is.na(ADM_RATE) & is.na(LOCALE))) %>%
-  
-  # Drop rows that have NA values for all UGDS_'RACE'
   filter(!(is.na(UGDS_WHITE) & is.na(UGDS_BLACK) & is.na(UGDS_HISP) & is.na(UGDS_ASIAN) & is.na(UGDS_AIAN) &
              is.na(UGDS_NHPI) & is.na(UGDS_2MOR) & is.na(UGDS_NRA) & is.na(UGDS_UNKN))) %>%
-  
-  # Binary variable for colleges that are public and is in city or suburb
-  mutate(
-    IS_PUBLIC = case_when(
-      CONTROL == 1 ~ 1,
-      CONTROL %in% c(2, 3) ~ 0,
-      TRUE ~ NA_real_
-    ),
-    IS_CITY = case_when(
-      LOCALE >= 11 & LOCALE <= 23 ~ 1,
-      LOCALE >= 31 & LOCALE <= 43 ~ 0,
-      TRUE ~ NA_real_
-    )) %>%
-  
-  # Remove column that is no longer needed
-  select(!c("CONTROL", "LOCALE"))
+  create_binary_vars()
 
 print(nrow(cleaned_data))
-
-# Writing to csv file
 write_csv(cleaned_data, "cleaned_data.csv")
 ```
 
@@ -93,7 +84,7 @@ Users will be able to select an institution and view its gender and racial compo
 ```{r}
 # Data cleaning
 feature1data <- data %>%
-  dplyr::select(INSTNM, UGDS_MEN, UGDS_WOMEN, UGDS_WHITE, UGDS_BLACK, UGDS_HISP, UGDS_ASIAN, UGDS_AIAN, UGDS_NHPI, UGDS_2MOR, UGDS_NRA, UGDS_UNKN) %>%
+  dplyr::select(INSTNM, UGDS, UGDS_MEN, UGDS_WOMEN, UGDS_WHITE, UGDS_BLACK, UGDS_HISP, UGDS_ASIAN, UGDS_AIAN, UGDS_NHPI, UGDS_2MOR, UGDS_NRA, UGDS_UNKN, PCTPELL) %>%
   filter(!(is.na(UGDS_MEN) & is.na(UGDS_WOMEN) & is.na(UGDS_WHITE) & is.na(UGDS_BLACK) & is.na(UGDS_HISP) & is.na(UGDS_ASIAN) & is.na(UGDS_AIAN) & is.na(UGDS_NHPI) & is.na(UGDS_2MOR) & is.na(UGDS_NRA) & is.na(UGDS_UNKN))) 
 
 # Write to csv file
@@ -149,28 +140,12 @@ race_chart
 The app will feature sliders for SAT average and admission rate (in ranges), along with filters for state and institution `CONTROL` type (Public = 1, Private = 2 or 3), Locale (by rural & town, suburb & city) . Based on the user's selections, the app will return a list of colleges that meet the criteria in the form of a scatter plot with x-axis is the SAT average and y-axis is the Admission rate, where on hover the point, it shows the information, on click, user can click on the school website link. User will also have the option to tick whether they want to include criteria SAT, Admission rate. For Locale and IS_PUBLIC, they can also not tick any box or all boxes. The sliders for SAT and Admission rate would have a start and end pointer to show the range in which they want to filter for.
 
 ```{r}
-# Data cleaning
+# Data cleaning for feature 2
 feature2data <- data %>%
-  # Select only relevant variables
-  dplyr::select(INSTNM, INSTURL, CONTROL, SAT_AVG, ADM_RATE, LOCALE) %>%
-  # Drop rows that have NA values for all SAT_AVG, ADM_RATE, and LOCALE
+  select(INSTNM, INSTURL, CONTROL, SAT_AVG, ADM_RATE, LOCALE) %>%
   filter(!(is.na(SAT_AVG) & is.na(ADM_RATE) & is.na(LOCALE))) %>%
-  # Binary variable for colleges that are public and is in city or suburb
-  mutate(
-    IS_PUBLIC = case_when(
-      CONTROL == 1 ~ 1,
-      CONTROL %in% c(2, 3) ~ 0,
-      TRUE ~ NA_real_
-    ),
-    IS_CITY = case_when(
-      LOCALE >= 11 & LOCALE <= 23 ~ 1,
-      LOCALE >= 31 & LOCALE <= 43 ~ 0,
-      TRUE ~ NA_real_
-    )) %>%
-  # Remove column that is no longer needed
-  select(!c("CONTROL", "LOCALE"))
+  create_binary_vars()
 
-# Writing to csv file
 write_csv(feature2data, "cleaned_feature2data.csv")
 
 df <- feature2data %>%
@@ -217,15 +192,13 @@ layout(
 The app will include a plot that allows users to filter colleges based on median student debt, median earnings, undergraduate enrollment, admission rate, and ACT average (calculated from subject scores using data manipulation). After selecting a college of interest, the app will use clustering techniques to identify and visualize similar institutions, helping users explore comparable schools based on these key financial and academic attributes.
 
 ```{r}
-# Data cleaning
+# Data cleaning for feature 3
 feature3data <- data %>%
   mutate(ACT_MEDIAN = ACTWRMID + ACTMTMID) %>%
   select(INSTNM, UGDS, ADM_RATE, ACT_MEDIAN, GRAD_DEBT_MDN) %>%
-  mutate(GRAD_DEBT_MDN = na_if(GRAD_DEBT_MDN, "PrivacySuppressed")) %>%
-  mutate(GRAD_DEBT_MDN = as.numeric(GRAD_DEBT_MDN)) %>%
+  mutate(GRAD_DEBT_MDN = as.numeric(na_if(GRAD_DEBT_MDN, "PrivacySuppressed"))) %>%
   drop_na()
 
-# Write to csv file
 write_csv(feature3data, "cleaned_feature3data.csv")
 
 # Scale features (exclude school name)
@@ -287,8 +260,8 @@ This feature allows users to select two institutions and compare them across key
 
 ```{r}
 # Load cleaned data
-feature1data <- readr::read_csv("cleaned_feature1data.csv") # Demographics
-feature2data <- readr::read_csv("cleaned_feature2data.csv") # Admissions, Institution Info
+feature1data <- readr::read_csv("cleaned_feature1data.csv") 
+feature2data <- readr::read_csv("cleaned_feature2data.csv") 
 
 college1 <- "Grinnell College"
 college2 <- "Carleton College"
@@ -304,15 +277,17 @@ college2_adm <- feature2data %>% filter(INSTNM == college2)
 # School details comparison
 info_data <- data.frame(
   Category = c("Location", "Institution Type"),
-  !!college1 := c(
+  College1 = c(
     ifelse(!is.na(college1_adm$IS_CITY[1]), ifelse(college1_adm$IS_CITY[1] == 1, "City/Suburb", "Rural/Town"), "N/A"),
     ifelse(!is.na(college1_adm$IS_PUBLIC[1]), ifelse(college1_adm$IS_PUBLIC[1] == 1, "Public", "Private"), "N/A")
   ),
-  !!college2 := c(
+  College2 = c(
     ifelse(!is.na(college2_adm$IS_CITY[1]), ifelse(college2_adm$IS_CITY[1] == 1, "City/Suburb", "Rural/Town"), "N/A"),
     ifelse(!is.na(college2_adm$IS_PUBLIC[1]), ifelse(college2_adm$IS_PUBLIC[1] == 1, "Public", "Private"), "N/A")
   )
 )
+# Set column names to actual college names
+names(info_data)[2:3] <- c(college1, college2)
 print(info_data)
 
 # Summary table with all categories
@@ -321,7 +296,7 @@ summary_table <- data.frame(
     "Men %", "Women %",
     "Location", "Institution Type", "SAT Avg", "Admission Rate"
   ),
-  !!college1 := c(
+  College1 = c(
     round(college1_demo$UGDS_MEN[1] * 100, 1),
     round(college1_demo$UGDS_WOMEN[1] * 100, 1),
     ifelse(!is.na(college1_adm$IS_CITY[1]), ifelse(college1_adm$IS_CITY[1] == 1, "City/Suburb", "Rural/Town"), "N/A"),
@@ -329,7 +304,7 @@ summary_table <- data.frame(
     college1_adm$SAT_AVG[1],
     paste0(round(college1_adm$ADM_RATE[1] * 100, 1), "%")
   ),
-  !!college2 := c(
+  College2 = c(
     round(college2_demo$UGDS_MEN[1] * 100, 1),
     round(college2_demo$UGDS_WOMEN[1] * 100, 1),
     ifelse(!is.na(college2_adm$IS_CITY[1]), ifelse(college2_adm$IS_CITY[1] == 1, "City/Suburb", "Rural/Town"), "N/A"),
@@ -338,6 +313,8 @@ summary_table <- data.frame(
     paste0(round(college2_adm$ADM_RATE[1] * 100, 1), "%")
   )
 )
+# Set column names to actual college names
+names(summary_table)[2:3] <- c(college1, college2)
 print(summary_table)
 ```
 
