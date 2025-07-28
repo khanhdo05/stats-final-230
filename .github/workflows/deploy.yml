@@ -1,5 +1,3 @@
-# .github/workflows/deploy.yml
-
 name: Deploy to ShinyApps
 
 on:
@@ -10,28 +8,36 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
 
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
-          install.packages("rsconnect", dependencies = FALSE)
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+
+      - name: Install R packages
+        run: |
+          install.packages("rsconnect", dependencies = TRUE, repos = "https://cran.rstudio.com")
 
         shell: Rscript {0}
 
-      - name: Deploy app
+      - name: Deploy to ShinyApps
         env:
           SHINYAPPS_NAME: ${{ secrets.SHINYAPPS_NAME }}
           SHINYAPPS_TOKEN: ${{ secrets.SHINYAPPS_TOKEN }}
           SHINYAPPS_SECRET: ${{ secrets.SHINYAPPS_SECRET }}
         run: |
           library(rsconnect)
-          rsconnect::setAccountInfo(name=Sys.getenv("SHINYAPPS_NAME"),
-                                    token=Sys.getenv("SHINYAPPS_TOKEN"),
-                                    secret=Sys.getenv("SHINYAPPS_SECRET"))
+          rsconnect::setAccountInfo(
+            name = Sys.getenv("SHINYAPPS_NAME"),
+            token = Sys.getenv("SHINYAPPS_TOKEN"),
+            secret = Sys.getenv("SHINYAPPS_SECRET")
+          )
           rsconnect::deployApp(appDir = ".", appName = "stats-final-230", forceUpdate = TRUE)
 
         shell: Rscript {0}
