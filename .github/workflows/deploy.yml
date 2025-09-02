@@ -26,6 +26,3 @@ jobs:
           # token and secret obtained from https://www.shinyapps.io/admin/#/tokens
           accountToken: ${{ secrets.SHINYAPPS_TOKEN }}
           accountSecret: ${{ secrets.SHINYAPPS_SECRET }}
-
-          # always overwrite the existing deployment
-          entryPoint: 'rsconnect::deployApp(appName="college-navigator", account="khanhdo05", forceUpdate=TRUE)'
