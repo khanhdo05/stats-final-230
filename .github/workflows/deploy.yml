@@ -28,4 +28,4 @@ jobs:
           accountSecret: ${{ secrets.SHINYAPPS_SECRET }}
 
           # always overwrite the existing deployment
-          forceUpdate: TRUE
+          extraArgs: 'forceUpdate=TRUE'
