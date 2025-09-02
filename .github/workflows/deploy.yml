@@ -28,4 +28,4 @@ jobs:
           accountSecret: ${{ secrets.SHINYAPPS_SECRET }}
 
           # always overwrite the existing deployment
-          args: 'forceUpdate=TRUE'
+          entryPoint: 'rsconnect::deployApp(appName="college-navigator", account="khanhdo05", forceUpdate=TRUE)'
