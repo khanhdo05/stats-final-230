@@ -32,11 +32,17 @@ Our dataset is from the U.S. Department of Education College Scorecard's Most Re
 
 ## App Screenshots
 
+### Feature 1: Find Colleges
+
 ![image](https://github.com/user-attachments/assets/a46ff724-f737-4eeb-8e43-f1c90e70fdc4)
 
-![image](https://github.com/user-attachments/assets/0595d6d9-cef0-4ef2-a0ef-982f2fbd695d)
+### Feature 2: Compare Colleges
 
-![image](https://github.com/user-attachments/assets/b1aefaa6-a1f9-4b4d-a5ac-5f4b6c7c5fd3)
+<img width="1754" height="1384" alt="image" src="https://github.com/user-attachments/assets/db7efa34-df89-4f82-8f98-821651170384" />
+
+### Feature 3: Gender and Racial Comparison
+
+<img width="1723" height="1361" alt="image" src="https://github.com/user-attachments/assets/00d64d70-11ec-48e6-97ee-df76d8e36170" />
 
 ## Getting Started with our App
 
