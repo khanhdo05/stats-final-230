@@ -23,12 +23,12 @@ ui <- navbarPage("College Navigator", id = "navbar",
                  tabPanel("College Finder",
                           sidebarLayout(
                             sidebarPanel(
-                              checkboxInput("use_sat", "Filter by SAT Average", value = FALSE),
+                              checkboxInput("use_sat", "Filter by SAT Average", value = TRUE),
                               conditionalPanel(
                                 condition = "input.use_sat == true",
                                 sliderInput("sat_range", "SAT Average Range:", min = 400, max = 1600, value = c(1000, 1400))
                               ),
-                              checkboxInput("use_adm", "Filter by Admission Rate", value = FALSE),
+                              checkboxInput("use_adm", "Filter by Admission Rate", value = TRUE),
                               conditionalPanel(
                                 condition = "input.use_adm == true",
                                 sliderInput("adm_range", "Admission Rate Range:", min = 0, max = 1, value = c(0.3, 0.8), step = 0.01)
@@ -104,38 +104,6 @@ ui <- navbarPage("College Navigator", id = "navbar",
                           fluidRow(
                             column(6, plotlyOutput('genderPie', height = "600px")),
                             column(6, plotlyOutput('racePie', height = "600px"))
-                          )
-                 ),
-                 
-                 # Feature 4: Find Similar Colleges
-                 tabPanel("Find Similar Colleges",
-                          sidebarLayout(
-                            sidebarPanel(
-                              selectizeInput("selected_inst_2", "Select Institution",
-                                          choices = all_institutions,
-                                          options = list(maxItems = 1),
-                                          width = "100%"),
-                              checkboxGroupInput("show_only_cluster", "Show Only Cluster of Selected Institution",
-                                                 choices = list("Filter" = 1)),
-                              checkboxGroupInput("enrollment_filter", "Similar Enrollment Size",
-                                                 choices = list("Include" = 1)),
-                              checkboxGroupInput("ACT_filter", "Similar Test Score",
-                                                 choices = list("Include" = 1)),
-                              checkboxGroupInput("admission_filter", "Similar Admission Rate",
-                                                 choices = list("Include" = 1)),
-                              checkboxGroupInput("debt_filter", "Similar Graduate Debt",
-                                                 choices = list("Include" = 1)),
-                              numericInput("n_clusters", "Number of Clusters (Specificity of Similarity)", value = 5, min = 2, max = 20),
-                              actionButton("show_result_3", "Show Similar Colleges")
-                            ),
-                            mainPanel(
-                              plotlyOutput("cluster_plot"),
-                              hr(),
-                              uiOutput("cluster_school_header"),
-                              dataTableOutput("cluster_school_info"),
-                              br(),
-                              uiOutput("cluster_school_link")
-                            )
                           )
                  )
 )
@@ -381,7 +349,7 @@ server <- function(input, output){
   })
   
   # =============================================================================
-  # Feature 2: Gender and Racial Composition
+  # Feature 3: Gender and Racial Composition
   # =============================================================================
   
   # Gender composition pie chart
@@ -403,176 +371,7 @@ server <- function(input, output){
   })
   
   # =============================================================================
-  # Feature 3: Find Similar Colleges
-  # =============================================================================
-  
-  # Filter data for clustering
-  filtered_data_3 <- eventReactive(input$show_result_3, {
-    df_pca <- feature3data
-    
-    if (!1 %in% input$enrollment_filter) {
-      df_pca <- select(df_pca, -UGDS)
-    }
-    if (!1 %in% input$ACT_filter) {
-      df_pca <- select(df_pca, -ACT_MEDIAN)
-    }
-    if (!1 %in% input$admission_filter) {
-      df_pca <- select(df_pca, -ADM_RATE)
-    }
-    if (!1 %in% input$debt_filter) {
-      df_pca <- select(df_pca, -GRAD_DEBT_MDN)
-    }
-    
-    return(df_pca)
-  })
-  
-  # Render cluster plot
-  output$cluster_plot <- renderPlotly({
-    df_pca <- filtered_data_3()
-    
-    if (!is.data.frame(df_pca) || nrow(df_pca) == 0) {
-      return(NULL)
-    }
-    
-    if ("INSTNM" %in% colnames(df_pca)) {
-      school_names <- df_pca$INSTNM
-      features <- select(df_pca, -INSTNM)
-    } else {
-      school_names <- paste("School", 1:nrow(df_pca))
-      features <- df_pca
-    }
-    
-    features_scaled <- scale(features)
-    
-    # K-means clustering & PCA
-    k <- input$n_clusters
-    if (nrow(features_scaled) < k) {
-      showNotification("Too few schools to form this many clusters. Please reduce the number of clusters.", type = "error")
-      return(NULL)
-    }
-    
-    kmeans_result <- tryCatch({
-      kmeans(features_scaled, centers = k, nstart = 25)
-    }, error = function(e) {
-      showNotification("Clustering failed: Try selecting more variables or fewer clusters.", type = "error")
-      return(NULL)
-    })
-    if (is.null(kmeans_result)) return(NULL)
-    
-    pca <- tryCatch({
-      prcomp(features_scaled)
-    }, error = function(e) {
-      showNotification("PCA failed: Not enough variables for dimensionality reduction.", type = "error")
-      return(NULL)
-    })
-    if (is.null(pca)) return(NULL)
-    
-    if (ncol(pca$x) < 2) {
-      showNotification("PCA failed: not enough dimensions to display 2 components. Select more or different variables.", type = "error")
-      return(NULL)
-    }
-    
-    pca_data <- as.data.frame(pca$x[, 1:2])
-    colnames(pca_data) <- c("PC1", "PC2")
-    pca_data$School <- school_names
-    pca_data$Cluster <- as.factor(kmeans_result$cluster)
-    
-    # Show only the cluster of the selected school
-    if ("1" %in% input$show_only_cluster) {
-      selected_school <- input$selected_inst_2
-      
-      if (!(selected_school %in% pca_data$School)) {
-        showNotification("Selected institution not found in clustered data.", type = "error")
-        return(NULL)
-      }
-      
-      selected_cluster <- pca_data$Cluster[pca_data$School == selected_school][1]
-      pca_data <- pca_data[pca_data$Cluster == selected_cluster, ]
-    }
-    
-    plot_ly(pca_data,
-            x = ~PC1,
-            y = ~PC2,
-            type = 'scatter',
-            mode = 'markers',
-            color = ~Cluster,
-            text = ~paste("School:", School, "<br>Cluster:", Cluster),
-            hoverinfo = 'text',
-            customdata = ~School) %>%
-      layout(
-        title = "Interactive K-means Cluster Plot (PCA)",
-        xaxis = list(title = "Principal Component 1"),
-        yaxis = list(title = "Principal Component 2"),
-        annotations = list(
-          x = 0.5, y = 1,
-          text = "Hover over a point to see which school it is.",
-          showarrow = FALSE,
-          font = list(size = 14),
-          align = 'center',
-          xref = 'paper', yref = 'paper'
-        )
-      )
-  })
-  
-  # Show dynamic header with school name
-  output$cluster_school_header <- renderUI({
-    event <- event_data("plotly_click")
-    if (is.null(event)) return(NULL)
-    
-    clicked_school <- event$customdata
-    if (is.null(clicked_school)) return(NULL)
-    
-    tags$h4(paste(clicked_school))
-  })
-  
-  # Show selected school info
-  output$cluster_school_info <- renderDT({
-    event <- event_data("plotly_click")
-    df_pca <- filtered_data_3()
-    
-    enrollment_selected <- "1" %in% input$enrollment_filter
-    act_selected <- "1" %in% input$ACT_filter
-    admission_selected <- "1" %in% input$admission_filter
-    debt_selected <- "1" %in% input$debt_filter
-    
-    if (is.null(event) || !is.data.frame(df_pca) || nrow(df_pca) == 0) return(NULL)
-    
-    clicked_school <- event$customdata
-    if (is.null(clicked_school)) return(NULL)
-    
-    clicked <- df_pca %>% filter(INSTNM == clicked_school)
-    
-    if (nrow(clicked) == 0) {
-      showNotification("No matching school found for the selected point.", type = "error")
-      return(NULL)
-    }
-    
-    # Create detailed info table based on selected filters
-    info_data <- data.frame(
-      Metric = character(),
-      Value = character(),
-      stringsAsFactors = FALSE
-    )
-    
-    # If no data to show, return message
-    if (nrow(info_data) == 0) {
-      return(datatable(data.frame(Message = "No data available for selected categories"), 
-                      options = list(dom = 't', searching = FALSE, lengthChange = FALSE)))
-    }
-    
-    datatable(info_data, 
-              options = list(
-                pageLength = 5,
-                dom = 't',
-                searching = FALSE,
-                lengthChange = FALSE
-              ),
-              rownames = FALSE,
-              colnames = c("Metric", "Value"))
-  })
-  
-  # =============================================================================
-  # Feature 4: Compare Colleges
+  # Feature 2: Compare Colleges
   # =============================================================================
   
   comparison_data <- reactive({
